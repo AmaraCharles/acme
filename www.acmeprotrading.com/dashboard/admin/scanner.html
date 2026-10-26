@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gate Scanner — Birthday Bash</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #F0D080;
+    --dark: #0E0905;
+    --dark2: #1A1008;
+    --dark3: #2E1F0A;
+    --cream: #FAF6EE;
+    --border: rgba(201,168,76,0.25);
+    --green: #1D9E75;
+    --green-pale: #E1F5EE;
+    --red: #E24B4A;
+    --red-pale: #FCEBEB;
+  }
+
+  body {
+    background: var(--dark);
+    color: var(--cream);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 1.75rem;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.5rem;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    color: var(--gold-light);
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: rgba(250,246,238,0.45);
+    margin-top: 4px;
+  }
+
+  /* Camera scanner */
+  .scanner-wrap {
+    width: 100%;
+    max-width: 420px;
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 1.25rem;
+  }
+
+  #video {
+    width: 100%;
+    display: block;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    background: #000;
+  }
+
+  .scan-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .scan-corner {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-color: var(--gold);
+    border-style: solid;
+  }
+  .c-tl { top: 28%; left: 18%; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .c-tr { top: 28%; right: 18%; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+  .c-bl { bottom: 28%; left: 18%; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+  .c-br { bottom: 28%; right: 18%; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+  .scan-line {
+    position: absolute;
+    left: 18%;
+    right: 18%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    animation: scanline 2s ease-in-out infinite;
+    top: 28%;
+  }
+
+  @keyframes scanline {
+    0%, 100% { top: 28%; opacity: 1; }
+    50% { top: 72%; opacity: 0.7; }
+  }
+
+  .cam-status {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: rgba(250,246,238,0.4);
+    background: rgba(14,9,5,0.7);
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  canvas { display: none; }
+
+  /* Result card */
+  .result-card {
+    width: 100%;
+    max-width: 420px;
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    margin-bottom: 1.25rem;
+    border: 1.5px solid transparent;
+    display: none;
+    animation: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.93); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .result-card.granted {
+    background: rgba(29,158,117,0.1);
+    border-color: var(--green);
+    display: block;
+  }
+
+  .result-card.denied {
+    background: rgba(226,75,74,0.1);
+    border-color: var(--red);
+    display: block;
+  }
+
+  .result-card.already-used {
+    background: rgba(201,168,76,0.08);
+    border-color: var(--gold);
+    display: block;
+  }
+
+  .big-icon {
+    font-size: 3.5rem;
+    margin-bottom: 0.5rem;
+    line-height: 1;
+  }
+
+  .result-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .granted .result-title { color: #5DCAA5; }
+  .denied .result-title { color: var(--red); }
+  .already-used .result-title { color: var(--gold-light); }
+
+  .result-sub {
+    font-size: 14px;
+    margin-bottom: 0.75rem;
+  }
+
+  .guest-detail {
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    margin-top: 0.75rem;
+  }
+
+  .guest-detail .row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .guest-detail .row:last-child { border-bottom: none; }
+  .guest-detail .row .k { color: rgba(250,246,238,0.45); }
+  .guest-detail .row .v { font-weight: 500; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--gold);
+    color: var(--dark);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1.3rem;
+    cursor: pointer;
+    margin-top: 0.75rem;
+  }
+
+  .btn:hover { background: var(--gold-light); }
+
+  /* Log */
+  .log-section {
+    width: 100%;
+    max-width: 420px;
+    margin-top: 0.5rem;
+  }
+
+  .log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+
+  .log-header span {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .log-clear {
+    font-size: 11px;
+    color: rgba(250,246,238,0.35);
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  .log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  .log-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .log-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .log-dot.g { background: var(--green); }
+  .log-dot.r { background: var(--red); }
+  .log-dot.w { background: var(--gold); }
+
+  .log-name { flex: 1; font-weight: 500; }
+  .log-time { font-size: 11px; color: rgba(250,246,238,0.35); }
+  .log-status { font-size: 11px; }
+  .log-status.g { color: #5DCAA5; }
+  .log-status.r { color: var(--red); }
+  .log-status.w { color: var(--gold-light); }
+
+  /* Setup panel */
+  .setup-panel {
+    width: 100%;
+    max-width: 420px;
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .setup-panel h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    color: var(--gold-light);
+    margin-bottom: 0.75rem;
+  }
+
+  textarea.token-input {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--cream);
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 0.65rem 0.9rem;
+    outline: none;
+    resize: vertical;
+    min-height: 100px;
+    margin-bottom: 0.75rem;
+  }
+
+  .or-divider {
+    display: flex; align-items: center; gap: 0.75rem; margin: 0.75rem 0;
+    font-size: 12px; color: rgba(250,246,238,0.35);
+  }
+  .or-divider::before, .or-divider::after {
+    content:''; flex:1; height:1px; background:var(--border);
+  }
+
+  .btn-sm {
+    font-size: 12px;
+    padding: 0.45rem 0.9rem;
+    border-radius: 6px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--gold-light);
+    cursor: pointer;
+  }
+
+  .btn-sm:hover { border-color: var(--gold); background: rgba(201,168,76,0.08); }
+
+  .stat-row {
+    display: flex; gap: 8px; margin-bottom: 0.5rem;
+  }
+  .mini-stat {
+    flex: 1;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    text-align: center;
+    font-size: 11px;
+  }
+  .mini-stat .n { font-size: 1.3rem; font-family: 'Playfair Display', serif; }
+  .mini-stat.g .n { color: #5DCAA5; }
+  .mini-stat.r .n { color: var(--red); }
+  .mini-stat.t .n { color: var(--gold-light); }
+  .mini-stat .l { color: rgba(250,246,238,0.4); margin-top:2px; }
+
+  #no-tokens-msg {
+    font-size: 13px;
+    color: rgba(250,246,238,0.45);
+    text-align: center;
+    padding: 0.5rem;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="eyebrow">Gate Access Control</p>
+  <h1>Guest Scanner</h1>
+  <p class="subtitle" id="event-label">Birthday Bash 2025</p>
+</div>
+
+<!-- Setup: load token list -->
+<div class="setup-panel" id="setup-panel">
+  <h3>Load Guest Tokens</h3>
+  <p style="font-size:12px; color:rgba(250,246,238,0.45); margin-bottom:0.75rem;">
+    If you opened the Admin page on this same device, tokens are already loaded.
+    Otherwise, paste the exported JSON below.
+  </p>
+  <button class="btn-sm" onclick="loadFromStorage()">Use saved tokens from this device</button>
+  <div class="or-divider">or paste exported JSON</div>
+  <textarea class="token-input" id="token-json" placeholder='{"salt":"...","tokens":{...}}'></textarea>
+  <button class="btn" onclick="loadFromJSON()">Load Tokens</button>
+  <p id="no-tokens-msg" style="display:none;"></p>
+</div>
+
+<!-- Stats -->
+<div class="stat-row" style="width:100%; max-width:420px; margin-bottom:1rem;">
+  <div class="mini-stat t"><div class="n" id="st-total">0</div><div class="l">Total Guests</div></div>
+  <div class="mini-stat g"><div class="n" id="st-granted">0</div><div class="l">Admitted</div></div>
+  <div class="mini-stat r"><div class="n" id="st-denied">0</div><div class="l">Denied</div></div>
+</div>
+
+<!-- Scanner -->
+<div class="scanner-wrap">
+  <video id="video" playsinline autoplay muted></video>
+  <canvas id="canvas"></canvas>
+  <div class="scan-overlay">
+    <div class="scan-corner c-tl"></div>
+    <div class="scan-corner c-tr"></div>
+    <div class="scan-corner c-bl"></div>
+    <div class="scan-corner c-br"></div>
+    <div class="scan-line"></div>
+  </div>
+  <div class="cam-status" id="cam-status">Starting camera…</div>
+</div>
+
+<!-- Result card -->
+<div class="result-card" id="result-card">
+  <div class="big-icon" id="result-icon">✓</div>
+  <div class="result-title" id="result-title">Access Granted</div>
+  <div class="result-sub" id="result-sub">Welcome!</div>
+  <div class="guest-detail" id="guest-detail"></div>
+  <button class="btn" onclick="resetScanner()">Scan Next Guest</button>
+</div>
+
+<!-- Activity log -->
+<div class="log-section">
+  <div class="log-header">
+    <span>Scan Log</span>
+    <button class="log-clear" onclick="clearLog()">Clear</button>
+  </div>
+  <div class="log-list" id="log-list">
+    <p style="font-size:13px; color:rgba(250,246,238,0.3); text-align:center; padding:1rem;">No scans yet</p>
+  </div>
+</div>
+
+<script>
+let tokenMap = {};
+let scanActive = true;
+let grantedCount = 0, deniedCount = 0;
+const logItems = [];
+
+// --- Token loading ---
+function loadFromStorage() {
+  const raw = localStorage.getItem("bday_tokens");
+  if (!raw) {
+    showMsg("No tokens found on this device. Please paste the exported JSON.");
+    return;
+  }
+  tokenMap = JSON.parse(raw);
+  const ev = JSON.parse(localStorage.getItem("bday_event") || "{}");
+  if (ev.name) document.getElementById("event-label").textContent = ev.name;
+  finalizeLoad();
+}
+
+function loadFromJSON() {
+  const raw = document.getElementById("token-json").value.trim();
+  if (!raw) { showMsg("Please paste the JSON first."); return; }
+  try {
+    const parsed = JSON.parse(raw);
+    tokenMap = parsed.tokens || parsed;
+    finalizeLoad();
+  } catch(e) {
+    showMsg("Invalid JSON. Please check and try again.");
+  }
+}
+
+function finalizeLoad() {
+  document.getElementById("setup-panel").style.display = "none";
+  document.getElementById("st-total").textContent = Object.keys(tokenMap).length;
+  startCamera();
+}
+
+function showMsg(msg) {
+  const el = document.getElementById("no-tokens-msg");
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+// --- Camera ---
+function startCamera() {
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+    .then(stream => {
+      const video = document.getElementById("video");
+      video.srcObject = stream;
+      video.play();
+      document.getElementById("cam-status").textContent = "Point at QR code";
+      requestAnimationFrame(tick);
+    })
+    .catch(err => {
+      document.getElementById("cam-status").textContent = "Camera error: " + err.message;
+    });
+}
+
+function tick() {
+  if (!scanActive) return;
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
+    if (code) {
+      processQR(code.data);
+      return;
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+// --- QR Processing ---
+function processQR(data) {
+  scanActive = false;
+  document.getElementById("cam-status").textContent = "Code detected!";
+
+  let payload;
+  try {
+    payload = JSON.parse(data);
+  } catch(e) {
+    showResult("denied", payload);
+    return;
+  }
+
+  const token = payload.token;
+
+  if (!token || !tokenMap[token]) {
+    showResult("denied", payload);
+    return;
+  }
+
+  if (tokenMap[token].used) {
+    showResult("already-used", payload);
+    return;
+  }
+
+  // Mark as used
+  tokenMap[token].used = true;
+  localStorage.setItem("bday_tokens", JSON.stringify(tokenMap));
+  showResult("granted", payload);
+}
+
+function showResult(status, payload) {
+  const card = document.getElementById("result-card");
+  card.className = "result-card " + status;
+
+  const icon = document.getElementById("result-icon");
+  const title = document.getElementById("result-title");
+  const sub = document.getElementById("result-sub");
+  const detail = document.getElementById("guest-detail");
+
+  if (status === "granted") {
+    icon.textContent = "✓";
+    title.textContent = "Access Granted";
+    sub.textContent = "Welcome to the party!";
+    grantedCount++;
+    document.getElementById("st-granted").textContent = grantedCount;
+    addLog(payload?.name || "Unknown", "granted");
+  } else if (status === "denied") {
+    icon.textContent = "✗";
+    title.textContent = "Access Denied";
+    sub.textContent = "This invitation is not valid.";
+    deniedCount++;
+    document.getElementById("st-denied").textContent = deniedCount;
+    addLog(payload?.name || "Unknown QR", "denied");
+  } else {
+    icon.textContent = "!";
+    title.textContent = "Already Used";
+    sub.textContent = "This invitation was already scanned.";
+    addLog(payload?.name || "Unknown", "used");
+  }
+
+  if (payload && typeof payload === "object") {
+    const rows = [
+      ["Name", payload.name || "—"],
+      ["Phone", payload.phone || "—"],
+      ["Token", (payload.token || "").slice(0,16) + "…"],
+    ];
+    if (payload.event) rows.push(["Event", payload.event]);
+    detail.innerHTML = rows.map(([k,v]) => `<div class="row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  } else {
+    detail.innerHTML = `<div class="row"><span class="k">Token</span><span class="v">Unreadable</span></div>`;
+  }
+
+  // Auto dismiss after 6 seconds
+  setTimeout(resetScanner, 6000);
+}
+
+function resetScanner() {
+  const card = document.getElementById("result-card");
+  card.className = "result-card";
+  scanActive = true;
+  document.getElementById("cam-status").textContent = "Point at QR code";
+  requestAnimationFrame(tick);
+}
+
+// --- Log ---
+function addLog(name, status) {
+  const now = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  logItems.unshift({ name, status, time: now });
+  renderLog();
+}
+
+function renderLog() {
+  const list = document.getElementById("log-list");
+  if (logItems.length === 0) {
+    list.innerHTML = `<p style="font-size:13px; color:rgba(250,246,238,0.3); text-align:center; padding:1rem;">No scans yet</p>`;
+    return;
+  }
+  list.innerHTML = logItems.map(i => {
+    const cls = i.status === "granted" ? "g" : i.status === "denied" ? "r" : "w";
+    const label = i.status === "granted" ? "Admitted" : i.status === "denied" ? "Denied" : "Duplicate";
+    return `<div class="log-item">
+      <div class="log-dot ${cls}"></div>
+      <div class="log-name">${i.name}</div>
+      <div class="log-time">${i.time}</div>
+      <div class="log-status ${cls}">${label}</div>
+    </div>`;
+  }).join("");
+}
+
+function clearLog() {
+  logItems.length = 0;
+  renderLog();
+}
+
+// Auto-load if tokens exist
+window.onload = () => {
+  const raw = localStorage.getItem("bday_tokens");
+  if (raw) {
+    try {
+      tokenMap = JSON.parse(raw);
+      const ev = JSON.parse(localStorage.getItem("bday_event") || "{}");
+      if (ev.name) document.getElementById("event-label").textContent = ev.name;
+      finalizeLoad();
+    } catch(e) {}
+  }
+};
+</script>
+</body>
+</html>

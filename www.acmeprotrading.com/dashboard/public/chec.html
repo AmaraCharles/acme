@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Check-In | Send-Forth Party</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 🔧 STEP 1: PASTE YOUR FIREBASE CONFIG HERE
+  // Go to Firebase Console → Project Settings → Your Apps → Config
+  // ═══════════════════════════════════════════════════════════════════
+  const firebaseConfig = {
+  apiKey: "AIzaSyCESjB4oMTI8DNMudocwCqp7xgHySM91sY",
+  authDomain: "auth-3451d.firebaseapp.com",
+  projectId: "auth-3451d",
+  storageBucket: "auth-3451d.firebasestorage.app",
+  messagingSenderId: "395193851567",
+  appId: "1:395193851567:web:de6d98aed2f7516e8d3e5a",
+  measurementId: "G-H8VPX5GWE8"
+};
+  // ═══════════════════════════════════════════════════════════════════
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getDatabase(app);
+
+  // Expose to global scope so the rest of the script can use it
+  window._fbDb  = db;
+  window._fbRef = ref;
+  window._fbSet = set;
+  window._fbOnValue  = onValue;
+  window._fbGet  = get;
+  window._fbReady = true;
+
+  document.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0d1b2e; color: #fff; min-height: 100vh; }
+
+  /* ── Setup Banner ── */
+  #setup-banner {
+    background: #1a0a00; border-bottom: 2px solid #e67e22;
+    padding: 14px 16px; font-size: 0.8rem; color: #f39c12;
+    display: none;
+  }
+  #setup-banner.show { display: block; }
+  #setup-banner strong { color: #e67e22; display: block; margin-bottom: 6px; font-size: 0.9rem; }
+  #setup-banner ol { padding-left: 18px; line-height: 2; color: #f0b060; }
+  #setup-banner code {
+    background: #2a1500; padding: 2px 6px; border-radius: 4px;
+    font-family: monospace; font-size: 0.78rem; color: #ffd080;
+  }
+
+  /* ── Connection status ── */
+  #conn-bar {
+    padding: 6px 14px; font-size: 0.72rem; font-family: monospace;
+    display: flex; align-items: center; gap: 8px;
+    background: #0a1525; border-bottom: 1px solid #1e3050;
+  }
+  .conn-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .conn-dot.green { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
+  .conn-dot.yellow { background: #f39c12; box-shadow: 0 0 6px #f39c12; animation: pulse 1s infinite; }
+  .conn-dot.red { background: #e74c3c; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+  header {
+    background: linear-gradient(135deg, #0d1b2e 0%, #1a2f4e 100%);
+    border-bottom: 2px solid #D4AF37;
+    padding: 16px 20px; text-align: center;
+  }
+  header h1 { color: #D4AF37; font-size: 1.2rem; letter-spacing: 2px; text-transform: uppercase; }
+  header p  { color: #8899aa; font-size: 0.75rem; margin-top: 4px; }
+
+  .tabs { display: flex; border-bottom: 1px solid #1e3050; }
+  .tab {
+    flex: 1; padding: 12px; text-align: center; cursor: pointer;
+    font-size: 0.85rem; color: #8899aa; border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab.active { color: #D4AF37; border-bottom-color: #D4AF37; }
+
+  .view { display: none; padding: 16px; }
+  .view.active { display: block; }
+
+  /* Scanner */
+  #reader {
+    width: 100%; max-width: 400px; margin: 0 auto;
+    border-radius: 12px; overflow: hidden; border: 2px solid #D4AF37;
+  }
+
+  .result-box {
+    margin: 16px auto; max-width: 400px;
+    border-radius: 12px; padding: 20px; text-align: center; display: none;
+  }
+  .result-box.admitted { background: linear-gradient(135deg,#0a2e1a,#0d3d20); border: 2px solid #2ecc71; }
+  .result-box.already  { background: linear-gradient(135deg,#2e1a00,#3d2800); border: 2px solid #f39c12; }
+  .result-box.unknown  { background: linear-gradient(135deg,#2e0a0a,#3d1010); border: 2px solid #e74c3c; }
+
+  .result-icon   { font-size: 3rem; margin-bottom: 10px; }
+  .result-name   { font-size: 1.4rem; font-weight: bold; color: #D4AF37; }
+  .result-sub    { font-size: 0.85rem; color: #aabbcc; margin-top: 6px; }
+  .result-status { font-size: 1rem; margin-top: 8px; font-weight: bold; }
+  .admitted .result-status { color: #2ecc71; }
+  .already  .result-status { color: #f39c12; }
+  .unknown  .result-status { color: #e74c3c; }
+
+  .btn-scan-again {
+    margin-top: 14px; padding: 10px 28px;
+    background: #D4AF37; color: #0d1b2e;
+    border: none; border-radius: 8px;
+    font-weight: bold; font-size: 0.9rem; cursor: pointer;
+  }
+
+  /* Stats */
+  .stats-bar { display: flex; gap: 10px; margin: 0 0 16px 0; }
+  .stat-card {
+    flex: 1; background: #1a2f4e; border-radius: 10px;
+    padding: 12px 8px; text-align: center; border: 1px solid #1e3050;
+  }
+  .stat-num   { font-size: 1.6rem; font-weight: bold; color: #D4AF37; }
+  .stat-label { font-size: 0.7rem; color: #8899aa; text-transform: uppercase; margin-top: 2px; }
+
+  /* Guest list */
+  .search-box {
+    width: 100%; padding: 10px 14px;
+    background: #1a2f4e; border: 1px solid #2a4060;
+    border-radius: 8px; color: #fff; font-size: 0.9rem; margin-bottom: 12px;
+  }
+  .search-box::placeholder { color: #556677; }
+
+  .guest-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #1a2f4e; border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 8px; border-left: 3px solid transparent;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .guest-item.checked { border-left-color: #2ecc71; }
+  .guest-item.pending { border-left-color: #556677; }
+  .guest-item:hover   { background: #1e3a5e; }
+  .guest-name { font-size: 0.9rem; font-weight: 600; }
+  .guest-id   { font-size: 0.75rem; color: #8899aa; }
+
+  .badge { padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; }
+  .badge.in      { background: #0a3d20; color: #2ecc71; }
+  .badge.pending { background: #1e2d40; color: #8899aa; }
+
+  .filter-btns  { display: flex; gap: 8px; margin-bottom: 12px; }
+  .filter-btn {
+    padding: 6px 14px; border-radius: 20px; border: 1px solid #2a4060;
+    background: transparent; color: #8899aa; font-size: 0.8rem; cursor: pointer;
+  }
+  .filter-btn.active { background: #D4AF37; color: #0d1b2e; border-color: #D4AF37; font-weight: bold; }
+
+  .scan-hint {
+    text-align: center; color: #556677; font-size: 0.8rem; margin: 12px 0;
+    padding: 10px; background: #111e30; border-radius: 8px;
+  }
+
+  /* Sync indicator */
+  .sync-flash {
+    position: fixed; top: 10px; right: 10px; z-index: 999;
+    background: #0a3d20; border: 1px solid #2ecc71;
+    color: #2ecc71; padding: 6px 12px; border-radius: 8px;
+    font-size: 0.75rem; font-family: monospace;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  }
+  .sync-flash.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- Setup instructions (shown if config not filled in) -->
+<div id="setup-banner">
+  <strong>⚙️ Firebase Setup Required — edit this HTML file before using</strong>
+  <ol>
+    <li>Go to <strong>console.firebase.google.com</strong> → your project</li>
+    <li>Click <strong>Project Settings</strong> (gear icon) → <strong>Your apps</strong> → Web app → <strong>Config</strong></li>
+    <li>Copy the config object and paste it into the <code>firebaseConfig</code> section near the top of this file</li>
+    <li>In Firebase Console → <strong>Realtime Database</strong> → Create database (start in test mode)</li>
+    <li>Copy the <code>databaseURL</code> (looks like <code>https://your-project-default-rtdb.firebaseio.com</code>) into the config</li>
+    <li>Save the file, reload — the orange bar will disappear when connected ✅</li>
+  </ol>
+</div>
+
+<div id="conn-bar">
+  <div class="conn-dot yellow" id="conn-dot"></div>
+  <span id="conn-text">Connecting to Firebase…</span>
+</div>
+
+<div class="sync-flash" id="sync-flash">↑ Synced</div>
+
+<header>
+  <h1>🎉 Event Check-In</h1>
+  <p>Send-Forth Party for Barr. Osondu Okoro Peter</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('scanner', event)">📷 Scanner</div>
+  <div class="tab"        onclick="switchTab('guests',  event)">👥 Guest List</div>
+</div>
+
+<div id="scanner" class="view active">
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-num" id="stat-total">57</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-in" style="color:#2ecc71">0</div>
+      <div class="stat-label">Admitted</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-pending">57</div>
+      <div class="stat-label">Pending</div>
+    </div>
+  </div>
+
+  <div id="reader"></div>
+  <div class="scan-hint">Point camera at a guest's QR code to check them in</div>
+
+  <div class="result-box" id="result-box">
+    <div class="result-icon"   id="result-icon"></div>
+    <div class="result-name"   id="result-name"></div>
+    <div class="result-sub"    id="result-sub"></div>
+    <div class="result-status" id="result-status"></div>
+    <button class="btn-scan-again" onclick="resumeScanner()">Scan Next Guest</button>
+  </div>
+</div>
+
+<div id="guests" class="view">
+  <input class="search-box" type="text" id="search-input"
+         placeholder="🔍 Search guest name…" oninput="renderList()">
+  <div class="filter-btns">
+    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn"        onclick="setFilter('in',this)">Admitted</button>
+    <button class="filter-btn"        onclick="setFilter('pending',this)">Pending</button>
+  </div>
+  <div id="guest-list"></div>
+</div>
+
+<script>
+// ── Guest Master List ────────────────────────────────────────────────────────
+const GUESTS = [
+  {id:"001",name:"ESV Collins Alabi",phone:"08059690905"},
+  {id:"002",name:"Mrs Alice Bishen",phone:"08036533020"},
+  {id:"003",name:"Mr Gerald",phone:"08033686173"},
+  {id:"004",name:"Mr Joshua Guyimu",phone:"08054145576"},
+  {id:"005",name:"Mrs Noni Okolo",phone:"08167140234"},
+  {id:"006",name:"Mr Bello",phone:"08057471805"},
+  {id:"007",name:"Mr Bature",phone:"08037421902"},
+  {id:"008",name:"Mr Akin",phone:"08060992055"},
+  {id:"009",name:"Mr Gbenga",phone:"08075028238"},
+  {id:"010",name:"Mrs Uche",phone:"07031944863"},
+  {id:"011",name:"Mr Israel",phone:"08059665957"},
+  {id:"012",name:"Badamasi Haiba",phone:"08088811210"},
+  {id:"013",name:"Gabriel Orim",phone:"07056563672"},
+  {id:"014",name:"Precious Jefe",phone:"07064665205"},
+  {id:"015",name:"Samuel Bakwunye",phone:"09030981130"},
+  {id:"016",name:"Dr Jude Stephen",phone:""},
+  {id:"017",name:"Saadatu M Idris",phone:""},
+  {id:"018",name:"Ibrahim Aminu Baba",phone:""},
+  {id:"019",name:"Hussaini Sarki",phone:""},
+  {id:"020",name:"Afolabi Abdullahi",phone:""},
+  {id:"021",name:"Shaaba Abraham",phone:""},
+  {id:"022",name:"Unigwe Amaka G",phone:""},
+  {id:"023",name:"Enoh Efugi",phone:""},
+  {id:"024",name:"Ulonnan Unche",phone:""},
+  {id:"025",name:"Blessing Patrick",phone:""},
+  {id:"026",name:"Arc Chioma Wogu-Ogbonna",phone:"08037005470"},
+  {id:"027",name:"Bldr Bashir Ibrahim",phone:"08067954941"},
+  {id:"028",name:"Rakiya Ali",phone:"08034500125"},
+  {id:"029",name:"Arc Kelechi Iroegbu",phone:"08034505239"},
+  {id:"030",name:"Arc Uweja Adenike",phone:"08106042667"},
+  {id:"031",name:"Arc Efunnowo Babatunde",phone:"08067298488"},
+  {id:"032",name:"Bldr Asmau Zubair",phone:"08163060881"},
+  {id:"033",name:"Arc Affia Okon",phone:"08065777235"},
+  {id:"034",name:"Mukhtar Iliyasu Umar",phone:"08034518970"},
+  {id:"035",name:"Mukhtar Suwaiba",phone:"08097594948"},
+  {id:"036",name:"Maryjane Idemudia",phone:"07083136840"},
+  {id:"037",name:"Ihuoma Anthony",phone:"08036011659"},
+  {id:"038",name:"Ikyegh Dooshima",phone:"08162458950"},
+  {id:"039",name:"Okorie Ifeanyi Vitus",phone:"08069677566"},
+  {id:"040",name:"Owobiyi Cynthia",phone:"08106060404"},
+  {id:"041",name:"Esther Philemon",phone:"08036997643"},
+  {id:"042",name:"Ahmed Hassan",phone:"08037147176"},
+  {id:"043",name:"Adesina Adeyemi",phone:"08067609182"},
+  {id:"044",name:"Oyibo Adaji",phone:"08037597625"},
+  {id:"045",name:"Bello Udu",phone:"08033140385"},
+  {id:"046",name:"Philips O I",phone:"08033149136"},
+  {id:"047",name:"Zainab Muhammad Idris",phone:"08023098806"},
+  {id:"048",name:"Engr Mrs Aderibigbe Hikmat T",phone:"07086881747"},
+  {id:"049",name:"Engr Tahir Babangari",phone:"08036419171"},
+  {id:"050",name:"Engr Okunlola Are Yemi",phone:"08037083498"},
+  {id:"051",name:"Engr Atigha Helen",phone:"08083566840"},
+  {id:"052",name:"Engr Zakari Madaki",phone:"08036079858"},
+  {id:"053",name:"Engr Donatus Ehimhen",phone:"08038696475"},
+  {id:"054",name:"Engr Salami Rasaq",phone:"08034786203"},
+  {id:"055",name:"Engr Adeniyi Babatunde",phone:"08062758481"},
+  {id:"056",name:"Engr Aikowe Paulina",phone:"08033750552"},
+  {id:"057",name:"Engr Shaibu Ahmed",phone:"07031857000"},
+];
+
+// ── State (synced from Firebase) ─────────────────────────────────────────────
+const checkedIn = {};       // { "001": "10:34 AM", ... }
+let currentFilter = 'all';
+let scanner = null;
+let scanning = true;
+let fbConnected = false;
+
+// ── Firebase helpers ──────────────────────────────────────────────────────────
+function checkConfigFilled() {
+  const dummy = ["PASTE_YOUR_API_KEY","PASTE_YOUR_AUTH_DOMAIN","PASTE_YOUR_DATABASE_URL"];
+  const cfg = document.querySelector('script[type="module"]').textContent;
+  return !dummy.some(d => cfg.includes(d));
+}
+
+document.addEventListener('firebase-ready', () => {
+  if (!checkConfigFilled()) {
+    document.getElementById('setup-banner').classList.add('show');
+    setConnStatus('red', '⚠️ Firebase config not set — running in offline mode');
+    return;
+  }
+
+  const db = window._fbDb;
+  const checkinRef = window._fbRef(db, 'checkins');
+
+  // Real-time listener — updates ALL devices instantly
+  window._fbOnValue(checkinRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    // Merge remote state into local (never delete, only add)
+    Object.assign(checkedIn, data);
+    updateStats();
+    renderList();
+    setConnStatus('green', `🔴 Live — ${Object.keys(checkedIn).length} admitted`);
+    fbConnected = true;
+  }, (err) => {
+    setConnStatus('red', '⚠️ Firebase error: ' + err.message);
+  });
+});
+
+function setConnStatus(color, text) {
+  const dot  = document.getElementById('conn-dot');
+  const span = document.getElementById('conn-text');
+  dot.className = 'conn-dot ' + color;
+  span.textContent = text;
+}
+
+function flashSync() {
+  const el = document.getElementById('sync-flash');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1400);
+}
+
+async function writeCheckin(guestId, timeStr) {
+  if (!fbConnected || !window._fbReady) return;
+  try {
+    const db = window._fbDb;
+    await window._fbSet(window._fbRef(db, `checkins/${guestId}`), timeStr);
+    flashSync();
+  } catch (e) {
+    console.warn('Firebase write failed:', e);
+  }
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function updateStats() {
+  const total   = GUESTS.length;
+  const inCount = Object.keys(checkedIn).length;
+  document.getElementById('stat-total').textContent   = total;
+  document.getElementById('stat-in').textContent      = inCount;
+  document.getElementById('stat-pending').textContent = total - inCount;
+  if (fbConnected) {
+    setConnStatus('green', `🔴 Live — ${inCount} of ${total} admitted`);
+  }
+}
+
+// ── QR Scanner ────────────────────────────────────────────────────────────────
+function startScanner() {
+  scanner = new Html5Qrcode("reader");
+  scanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 220, height: 220 } },
+    onScanSuccess,
+    () => {}
+  ).catch(() => {
+    document.getElementById('reader').innerHTML =
+      `<div style="padding:20px;text-align:center;color:#e74c3c;">
+        ⚠️ Camera access denied.<br><small>Please allow camera permissions and reload.</small>
+      </div>`;
+  });
+}
+
+function onScanSuccess(decodedText) {
+  if (!scanning) return;
+  scanning = false;
+  scanner.pause();
+
+  const match = decodedText.match(/GUEST_ID:(\d+)\|NAME:(.+?)\|PHONE:(.*)/);
+  document.getElementById('result-box').style.display = 'block';
+
+  if (match) {
+    const id    = match[1].padStart(3, '0');
+    const name  = match[2];
+    const guest = GUESTS.find(g => g.id === id);
+
+    if (!guest) {
+      showResult('unknown', '❓', name, `ID: #${id}`, 'Not on guest list');
+    } else if (checkedIn[id]) {
+      showResult('already', '⚠️', name, `Already admitted at ${checkedIn[id]}`, 'Duplicate Entry');
+    } else {
+      const now = new Date().toLocaleTimeString('en-NG', {hour:'2-digit', minute:'2-digit'});
+      checkedIn[id] = now;
+      updateStats();
+      renderList();
+      writeCheckin(id, now);   // ← writes to Firebase → syncs all devices
+      showResult('admitted', '✅', name, `Guest #${id} · ${now}`, 'ACCESS GRANTED');
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    }
+  } else {
+    showResult('unknown', '❓', 'Unknown QR Code', decodedText.substring(0, 40), 'Not a valid invite');
+  }
+}
+
+function showResult(type, icon, name, sub, status) {
+  const box = document.getElementById('result-box');
+  box.className = `result-box ${type}`;
+  document.getElementById('result-icon').textContent   = icon;
+  document.getElementById('result-name').textContent   = name;
+  document.getElementById('result-sub').textContent    = sub;
+  document.getElementById('result-status').textContent = status;
+}
+
+function resumeScanner() {
+  document.getElementById('result-box').style.display = 'none';
+  scanning = true;
+  scanner.resume();
+}
+
+// ── Guest List ────────────────────────────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderList();
+}
+
+function renderList() {
+  const q    = document.getElementById('search-input').value.toLowerCase();
+  const list = document.getElementById('guest-list');
+  list.innerHTML = '';
+
+  const filtered = GUESTS.filter(g => {
+    const matchSearch = g.name.toLowerCase().includes(q);
+    const isIn = !!checkedIn[g.id];
+    if (currentFilter === 'in')      return matchSearch && isIn;
+    if (currentFilter === 'pending') return matchSearch && !isIn;
+    return matchSearch;
+  });
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:#556677;padding:30px;">No guests found</div>';
+    return;
+  }
+
+  filtered.forEach(g => {
+    const isIn = !!checkedIn[g.id];
+    const time = checkedIn[g.id] || '';
+    const div  = document.createElement('div');
+    div.className = `guest-item ${isIn ? 'checked' : 'pending'}`;
+    div.innerHTML = `
+      <div>
+        <div class="guest-name">${g.name}</div>
+        <div class="guest-id">#${g.id}${time ? ' · Admitted ' + time : ''}</div>
+      </div>
+      <span class="badge ${isIn ? 'in' : 'pending'}">${isIn ? 'IN ✓' : 'Pending'}</span>
+    `;
+    // Manual tap-to-admit from guest list
+    div.onclick = () => {
+      if (!isIn) {
+        const now = new Date().toLocaleTimeString('en-NG', {hour:'2-digit', minute:'2-digit'});
+        checkedIn[g.id] = now;
+        updateStats();
+        renderList();
+        writeCheckin(g.id, now);
+      }
+    };
+    list.appendChild(div);
+  });
+}
+
+function switchTab(tab, event) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(tab).classList.add('active');
+  event.target.classList.add('active');
+  if (tab === 'guests') renderList();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+updateStats();
+startScanner();
+</script>
+</body>
+</html>

@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flyer Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root {
+    --bg:        #080c14;
+    --surface:   #0e1520;
+    --surface2:  #141d2e;
+    --border:    #1e2d45;
+    --gold:      #D4AF37;
+    --gold-dim:  #8a7020;
+    --green:     #22c55e;
+    --red:       #ef4444;
+    --text:      #e8edf5;
+    --muted:     #5a6f8a;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-head);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 48px 24px; }
+
+  /* Header */
+  header { margin-bottom: 52px; }
+  .header-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid var(--gold-dim);
+    padding: 4px 12px;
+    border-radius: 2px;
+    margin-bottom: 20px;
+  }
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -1px;
+    color: var(--text);
+  }
+  h1 span { color: var(--gold); }
+  .subtitle {
+    margin-top: 12px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  /* Step layout */
+  .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 600px) { .steps { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+  .card.ready { border-color: var(--gold-dim); }
+  .card.full-width { grid-column: 1 / -1; }
+
+  .step-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .card h2 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+  .card p  { font-size: 12px; color: var(--muted); font-family: var(--font-mono); line-height: 1.6; }
+
+  /* Drop zones */
+  .dropzone {
+    margin-top: 16px;
+    border: 1.5px dashed var(--border);
+    border-radius: 8px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .dropzone:hover, .dropzone.dragover {
+    border-color: var(--gold);
+    background: rgba(212,175,55,0.04);
+  }
+  .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .dropzone-icon { font-size: 1.8rem; margin-bottom: 8px; }
+  .dropzone-label { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+  .dropzone.has-file { border-color: var(--gold-dim); background: rgba(212,175,55,0.05); }
+  .dropzone.has-file .dropzone-icon::after { content: ' ✓'; font-size: 1rem; color: var(--gold); }
+  .file-name {
+    margin-top: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--gold);
+    word-break: break-all;
+  }
+
+  /* CSV preview */
+  .csv-preview {
+    margin-top: 12px;
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    max-height: 100px;
+    overflow-y: auto;
+    display: none;
+  }
+  .csv-preview.show { display: block; }
+  .csv-count { color: var(--gold); font-weight: 500; }
+
+  /* Settings row */
+  .settings-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 16px; }
+  @media (max-width: 600px) { .settings-row { grid-template-columns: 1fr 1fr; } }
+
+  .setting-group label {
+    display: block;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .setting-group input[type="number"],
+  .setting-group select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .setting-group input:focus,
+  .setting-group select:focus { border-color: var(--gold-dim); }
+
+  /* Generate button */
+  .btn-generate {
+    display: block;
+    width: 100%;
+    margin-top: 16px;
+    padding: 18px;
+    background: var(--gold);
+    color: #080c14;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--font-head);
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-generate:hover { background: #e8c43a; transform: translateY(-1px); }
+  .btn-generate:disabled {
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Progress panel */
+  .progress-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 16px;
+    display: none;
+  }
+  .progress-panel.show { display: block; }
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .progress-header h3 { font-size: 0.9rem; font-weight: 700; }
+  .progress-stats {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .progress-stats span { color: var(--gold); }
+
+  .progress-bar-wrap {
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+
+  /* Log */
+  .log {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    height: 260px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.8;
+    scroll-behavior: smooth;
+  }
+  .log::-webkit-scrollbar { width: 4px; }
+  .log::-webkit-scrollbar-track { background: transparent; }
+  .log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-line { display: flex; gap: 10px; }
+  .log-time { color: var(--muted); flex-shrink: 0; }
+  .log-ok   { color: var(--green); }
+  .log-info { color: var(--gold); }
+  .log-err  { color: var(--red); }
+  .log-dim  { color: var(--muted); }
+
+  /* Dept summary */
+  .dept-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .dept-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+  }
+  .dept-chip-name { color: var(--text); font-weight: 600; font-size: 11px; }
+  .dept-chip-count { font-family: var(--font-mono); color: var(--gold); font-size: 13px; margin-top: 2px; }
+
+  /* Download section */
+  .download-section {
+    margin-top: 16px;
+    display: none;
+  }
+  .download-section.show { display: block; }
+
+  .download-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-top: 12px; }
+
+  .dl-btn {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .dl-btn:hover { border-color: var(--gold-dim); background: rgba(212,175,55,0.06); }
+  .dl-btn-icon { font-size: 1.2rem; flex-shrink: 0; }
+  .dl-btn-info { overflow: hidden; }
+  .dl-btn-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  .dl-btn-size { color: var(--muted); font-size: 11px; margin-top: 1px; }
+
+  .dl-all {
+    width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: rgba(212,175,55,0.08);
+    border: 1.5px solid var(--gold-dim);
+    border-radius: 8px;
+    padding: 14px;
+    color: var(--gold);
+    font-family: var(--font-head);
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s;
+    margin-bottom: 10px;
+  }
+  .dl-all:hover { background: rgba(212,175,55,0.14); }
+
+  .success-banner {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(34,197,94,0.08);
+    border: 1px solid rgba(34,197,94,0.3);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+    font-size: 13px;
+  }
+  .success-banner strong { color: var(--green); }
+
+  /* Flyer preview strip */
+  .preview-strip {
+    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-top: 12px;
+  }
+  .preview-strip::-webkit-scrollbar { height: 4px; }
+  .preview-strip::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .preview-thumb {
+    flex-shrink: 0; width: 120px; height: 100px;
+    object-fit: cover; border-radius: 6px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .preview-thumb:hover { border-color: var(--gold); }
+
+  /* Lightbox */
+  .lightbox {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.92);
+    display: none; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .lightbox.show { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 90vh; border-radius: 8px; }
+  .lightbox-close {
+    position: absolute; top: 20px; right: 24px;
+    font-size: 1.5rem; color: var(--muted); cursor: pointer;
+    background: none; border: none; color: white;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="header-tag">Event Tools v2.0</div>
+    <h1>Flyer <span>Generator</span></h1>
+    <p class="subtitle">Upload flyer + guest list → personalized QR invites, by department</p>
+  </header>
+
+  <!-- Step 1 & 2 -->
+  <div class="steps">
+    <div class="card" id="card-flyer">
+      <div class="step-num">Step 01 — Base Flyer</div>
+      <h2>Upload Flyer Template</h2>
+      <p>PNG or JPG. Your QR panel will be placed in the bottom-right corner.</p>
+      <div class="dropzone" id="drop-flyer">
+        <input type="file" id="input-flyer" accept="image/png,image/jpeg">
+        <div class="dropzone-icon">🖼</div>
+        <div class="dropzone-label">Click or drag your flyer here</div>
+      </div>
+      <div class="file-name" id="flyer-name"></div>
+    </div>
+
+    <div class="card" id="card-csv">
+      <div class="step-num">Step 02 — Guest List</div>
+      <h2>Upload Guest CSV</h2>
+      <p>Must have columns: <code style="color:var(--gold)">id, name, phone, department</code></p>
+      <div class="dropzone" id="drop-csv">
+        <input type="file" id="input-csv" accept=".csv,text/csv">
+        <div class="dropzone-icon">📋</div>
+        <div class="dropzone-label">Click or drag your CSV here</div>
+      </div>
+      <div class="file-name" id="csv-name"></div>
+      <div class="csv-preview" id="csv-preview"></div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="card full-width" style="margin-bottom:16px">
+    <div class="step-num">Step 03 — Settings</div>
+    <h2>QR Panel Options</h2>
+    <div class="settings-row">
+      <div class="setting-group">
+        <label>Panel Width (px)</label>
+        <input type="number" id="set-pw" value="230" min="150" max="400">
+      </div>
+      <div class="setting-group">
+        <label>Panel Height (px)</label>
+        <input type="number" id="set-ph" value="240" min="150" max="400">
+      </div>
+      <div class="setting-group">
+        <label>QR Size (px)</label>
+        <input type="number" id="set-qs" value="180" min="100" max="350">
+      </div>
+      <div class="setting-group">
+        <label>Right Margin (px)</label>
+        <input type="number" id="set-mr" value="28" min="0" max="100">
+      </div>
+      <div class="setting-group">
+        <label>Bottom Margin (px)</label>
+        <input type="number" id="set-mb" value="28" min="0" max="100">
+      </div>
+      <div class="setting-group">
+        <label>Output Quality</label>
+        <select id="set-quality">
+          <option value="0.97">High (97%)</option>
+          <option value="0.85">Medium (85%)</option>
+          <option value="0.70">Low (70%)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generate button -->
+  <button class="btn-generate" id="btn-generate" disabled onclick="startGeneration()">
+    ⚡ Generate All Flyers
+  </button>
+
+  <!-- Progress panel -->
+  <div class="progress-panel" id="progress-panel">
+    <div class="progress-header">
+      <h3>Processing</h3>
+      <div class="progress-stats"><span id="prog-done">0</span> / <span id="prog-total">0</span> flyers</div>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="prog-bar"></div></div>
+    <div class="log" id="log"></div>
+
+    <div class="dept-grid" id="dept-grid"></div>
+  </div>
+
+  <!-- Download section -->
+  <div class="download-section" id="download-section">
+    <div class="success-banner">
+      <span style="font-size:1.4rem">✅</span>
+      <div><strong>All flyers generated successfully!</strong><br>
+      <span style="color:var(--muted);font-size:12px;font-family:var(--font-mono)">Click any department below to download its ZIP, or grab everything at once.</span></div>
+    </div>
+    <a class="dl-all" id="dl-all" href="#" onclick="downloadAll(event)">⬇ Download All Departments (ZIP)</a>
+    <div class="download-grid" id="download-grid"></div>
+
+    <div style="margin-top:16px">
+      <div class="step-num" style="margin-bottom:8px">Preview — click to enlarge</div>
+      <div class="preview-strip" id="preview-strip"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close">✕</button>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let flyerFile = null, guestData = [], flyerImg = null;
+const deptZips = {};   // dept → JSZip
+let allZip = null;
+
+// ── File inputs ───────────────────────────────────────────────────────────────
+document.getElementById('input-flyer').addEventListener('change', e => handleFlyer(e.target.files[0]));
+document.getElementById('input-csv').addEventListener('change',  e => handleCSV(e.target.files[0]));
+
+// Drag and drop
+['drop-flyer','drop-csv'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('dragover'); });
+  el.addEventListener('dragleave', () => el.classList.remove('dragover'));
+  el.addEventListener('drop', e => {
+    e.preventDefault(); el.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (id === 'drop-flyer') handleFlyer(file);
+    else handleCSV(file);
+  });
+});
+
+function handleFlyer(file) {
+  if (!file) return;
+  flyerFile = file;
+  document.getElementById('flyer-name').textContent = file.name;
+  document.getElementById('drop-flyer').classList.add('has-file');
+  document.getElementById('card-flyer').classList.add('ready');
+  const reader = new FileReader();
+  reader.onload = e => {
+    flyerImg = new Image();
+    flyerImg.onload = checkReady;
+    flyerImg.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    // Handle quoted commas
+    const cols = [];
+    let cur = '', inQ = false;
+    for (const ch of line) {
+      if (ch === '"') inQ = !inQ;
+      else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    cols.push(cur.trim());
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = (cols[i] || '').replace(/^"|"$/g,'').trim());
+    return obj;
+  });
+}
+
+function handleCSV(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    guestData = parseCSV(e.target.result);
+    document.getElementById('csv-name').textContent = `${file.name} — ${guestData.length} guests found`;
+    document.getElementById('drop-csv').classList.add('has-file');
+    document.getElementById('card-csv').classList.add('ready');
+
+    // Preview
+    const prev = document.getElementById('csv-preview');
+    const depts = [...new Set(guestData.map(g => g.department || 'General'))];
+    prev.innerHTML = `<span class="csv-count">${guestData.length} guests</span> across ${depts.length} departments:<br>${depts.map(d => {
+      const c = guestData.filter(g => (g.department||'General') === d).length;
+      return `<span style="color:var(--text)">${d}</span> <span style="color:var(--gold)">(${c})</span>`;
+    }).join(' · ')}`;
+    prev.classList.add('show');
+    checkReady();
+  };
+  reader.readAsText(file);
+}
+
+function checkReady() {
+  const btn = document.getElementById('btn-generate');
+  btn.disabled = !(flyerImg && guestData.length > 0);
+}
+
+// ── QR Code Generator (canvas-based) ─────────────────────────────────────────
+function generateQRCanvas(data, size) {
+  return new Promise(resolve => {
+    const container = document.createElement('div');
+    container.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+    document.body.appendChild(container);
+    new QRCode(container, {
+      text: data, width: size, height: size,
+      colorDark: '#0a1628', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+    setTimeout(() => {
+      const canvas = container.querySelector('canvas');
+      const img = new Image();
+      img.onload = () => { document.body.removeChild(container); resolve(img); };
+      img.src = canvas ? canvas.toDataURL() : '';
+      if (!canvas) { document.body.removeChild(container); resolve(null); }
+    }, 80);
+  });
+}
+
+// ── Log helpers ───────────────────────────────────────────────────────────────
+function log(msg, type='dim') {
+  const logEl = document.getElementById('log');
+  const now = new Date().toLocaleTimeString('en', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-time">${now}</span><span class="log-${type}">${msg}</span>`;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ── Main generation ───────────────────────────────────────────────────────────
+async function startGeneration() {
+  const btn = document.getElementById('btn-generate');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating...';
+
+  document.getElementById('progress-panel').classList.add('show');
+  document.getElementById('download-section').classList.remove('show');
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('dept-grid').innerHTML = '';
+  document.getElementById('download-grid').innerHTML = '';
+  document.getElementById('preview-strip').innerHTML = '';
+
+  const total = guestData.length;
+  document.getElementById('prog-total').textContent = total;
+
+  // Settings
+  const PW  = +document.getElementById('set-pw').value;
+  const PH  = +document.getElementById('set-ph').value;
+  const QS  = +document.getElementById('set-qs').value;
+  const MR  = +document.getElementById('set-mr').value;
+  const MB  = +document.getElementById('set-mb').value;
+  const Q   = +document.getElementById('set-quality').value;
+
+  const FW = flyerImg.naturalWidth;
+  const FH = flyerImg.naturalHeight;
+  const PX1 = FW - PW - MR, PY1 = FH - PH - MB;
+  const PX2 = FW - MR,       PY2 = FH - MB;
+  const panel_cx = PX1 + PW / 2;
+
+  log(`Flyer: ${FW}×${FH}px | ${total} guests`, 'info');
+  log(`QR panel: ${PW}×${PH}px at (${PX1},${PY1})`, 'dim');
+
+  // Zip structures
+  allZip = new JSZip();
+  const deptMap = {};   // dept → { zip, folder, count }
+  const deptCounts = {};
+  const previews = [];
+
+  const depts = [...new Set(guestData.map(g => g.department || 'General'))];
+  depts.forEach(d => {
+    deptMap[d] = new JSZip();
+    deptCounts[d] = 0;
+  });
+
+  log(`Departments: ${depts.join(', ')}`, 'info');
+
+  let done = 0;
+
+  for (const guest of guestData) {
+    const id    = String(guest.id || done+1).padStart(3, '0');
+    const name  = guest.name  || 'Unknown';
+    const phone = guest.phone || 'N/A';
+    const dept  = guest.department || 'General';
+    const qrData = `GUEST_ID:${id}|NAME:${name}|PHONE:${phone}|DEPT:${dept}`;
+
+    try {
+      // Generate QR
+      const qrImg = await generateQRCanvas(qrData, QS);
+
+      // Draw on canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = FW; canvas.height = FH;
+      const ctx = canvas.getContext('2d');
+
+      // Draw base flyer
+      ctx.drawImage(flyerImg, 0, 0, FW, FH);
+
+      // Dark panel
+      ctx.fillStyle = 'rgba(10,22,48,0.92)';
+      ctx.fillRect(PX1, PY1, PW, PH);
+
+      // Gold border
+      ctx.strokeStyle = '#D4AF37';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(PX1 + 1.5, PY1 + 1.5, PW - 3, PH - 3);
+
+      // "SCAN TO ENTER" label
+      ctx.fillStyle = '#D4AF37';
+      ctx.font = `500 ${Math.round(PW * 0.075)}px DM Mono, monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText('SCAN TO ENTER', panel_cx, PY1 + Math.round(PH * 0.12));
+
+      // QR image
+      if (qrImg) {
+        const qr_x = PX1 + (PW - QS) / 2;
+        const qr_y = PY1 + Math.round(PH * 0.15);
+        ctx.drawImage(qrImg, qr_x, qr_y, QS, QS);
+      }
+
+      // Guest name
+      const nameFontSize = Math.min(Math.round(PW * 0.088), 22);
+      ctx.font = `700 ${nameFontSize}px Syne, sans-serif`;
+      ctx.fillStyle = '#D4AF37';
+      const displayName = name.length > 22 ? name.slice(0, 20) + '..' : name;
+      const qr_bottom = PY1 + Math.round(PH * 0.15) + QS;
+      ctx.fillText(displayName, panel_cx, qr_bottom + nameFontSize + 4);
+
+      // Guest ID
+      ctx.font = `400 ${Math.round(PW * 0.065)}px DM Mono, monospace`;
+      ctx.fillStyle = '#5a6f8a';
+      ctx.fillText(`#${id}`, panel_cx, qr_bottom + nameFontSize + 26);
+
+      // Export as blob
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', Q));
+      const safeName = name.replace(/[^a-zA-Z0-9 \-]/g, '').trim().replace(/ /g, '_');
+      const filename = `${id}_${safeName}.jpg`;
+
+      // Add to dept zip and all zip
+      const ab = await blob.arrayBuffer();
+      deptMap[dept].file(filename, ab);
+      allZip.folder(dept.replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/ /g, '_')).file(filename, ab);
+      deptCounts[dept]++;
+
+      // Preview (first 8)
+      if (done < 8) previews.push({ url: URL.createObjectURL(blob), name });
+
+      done++;
+      document.getElementById('prog-done').textContent = done;
+      document.getElementById('prog-bar').style.width = `${(done/total)*100}%`;
+      log(`✓ [${id}] ${name} — ${dept}`, 'ok');
+
+    } catch (err) {
+      log(`✗ [${id}] ${name} — ${err.message}`, 'err');
+      done++;
+    }
+
+    // Yield to browser every 5 items so UI stays responsive
+    if (done % 5 === 0) await new Promise(r => setTimeout(r, 0));
+  }
+
+  // Department summary
+  const deptGrid = document.getElementById('dept-grid');
+  depts.forEach(d => {
+    const chip = document.createElement('div');
+    chip.className = 'dept-chip';
+    chip.innerHTML = `<div class="dept-chip-name">${d}</div><div class="dept-chip-count">${deptCounts[d]} flyers</div>`;
+    deptGrid.appendChild(chip);
+  });
+
+  log('', 'dim');
+  log(`✅ Done! ${done} flyers generated.`, 'info');
+
+  // Build download buttons
+  await buildDownloads(deptMap, depts, deptCounts);
+
+  // Previews
+  const strip = document.getElementById('preview-strip');
+  previews.forEach(p => {
+    const img = document.createElement('img');
+    img.className = 'preview-thumb';
+    img.src = p.url;
+    img.alt = p.name;
+    img.title = p.name;
+    img.onclick = () => openLightbox(p.url);
+    strip.appendChild(img);
+  });
+
+  document.getElementById('download-section').classList.add('show');
+  btn.textContent = '✅ Done — Generate Again';
+  btn.disabled = false;
+}
+
+// ── Download helpers ──────────────────────────────────────────────────────────
+const deptBlobURLs = {};
+
+async function buildDownloads(deptMap, depts, deptCounts) {
+  const grid = document.getElementById('download-grid');
+  for (const dept of depts) {
+    const blob = await deptMap[dept].generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+    const url  = URL.createObjectURL(blob);
+    const safeDept = dept.replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/ /g, '_');
+    deptBlobURLs[dept] = { url, name: `flyers_${safeDept}.zip` };
+    const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+
+    const a = document.createElement('a');
+    a.className = 'dl-btn';
+    a.href = url;
+    a.download = `flyers_${safeDept}.zip`;
+    a.innerHTML = `<span class="dl-btn-icon">📁</span><div class="dl-btn-info"><div class="dl-btn-name">${dept}</div><div class="dl-btn-size">${deptCounts[dept]} flyers · ${sizeMB} MB</div></div>`;
+    grid.appendChild(a);
+  }
+}
+
+async function downloadAll(e) {
+  e.preventDefault();
+  const btn = document.getElementById('dl-all');
+  btn.textContent = '⏳ Zipping everything...';
+  const blob = await allZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'flyers_ALL_DEPARTMENTS.zip';
+  a.click();
+  btn.textContent = '⬇ Download All Departments (ZIP)';
+}
+
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+function openLightbox(url) {
+  document.getElementById('lightbox-img').src = url;
+  document.getElementById('lightbox').classList.add('show');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('show');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Birthday Invite Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #F0D080;
+    --gold-pale: #FBF3DC;
+    --dark: #1A1008;
+    --dark2: #2E1F0A;
+    --mid: #7A5C2A;
+    --cream: #FAF6EE;
+    --border: rgba(201,168,76,0.25);
+  }
+
+  body {
+    background: var(--dark);
+    color: var(--cream);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(201,168,76,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 100%, rgba(201,168,76,0.05) 0%, transparent 60%);
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .header .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.75rem;
+  }
+
+  .header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 700;
+    color: var(--gold-light);
+    line-height: 1.1;
+  }
+
+  .header p {
+    color: rgba(250,246,238,0.55);
+    font-size: 14px;
+    margin-top: 0.5rem;
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .divider span {
+    color: var(--gold);
+    font-size: 18px;
+  }
+
+  .card {
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.75rem;
+    margin-bottom: 1.5rem;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .card h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: var(--gold-light);
+    margin-bottom: 1rem;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.4rem;
+  }
+
+  input, textarea {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--cream);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 0.65rem 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 1rem;
+  }
+
+  input:focus, textarea:focus {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.05);
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 140px;
+    font-family: 'DM Mono', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .hint {
+    font-size: 12px;
+    color: rgba(250,246,238,0.4);
+    margin-top: -0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--gold);
+    color: var(--dark);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    border: none;
+    border-radius: 8px;
+    padding: 0.7rem 1.5rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .btn:hover { background: var(--gold-light); }
+  .btn:active { transform: scale(0.98); }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--gold-light);
+    font-size: 12px;
+    padding: 0.45rem 0.9rem;
+    border-radius: 6px;
+  }
+
+  .btn-outline:hover { border-color: var(--gold); background: rgba(201,168,76,0.08); }
+
+  .stats {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat {
+    flex: 1;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    text-align: center;
+  }
+
+  .stat .num {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    color: var(--gold-light);
+    line-height: 1;
+  }
+
+  .stat .lbl {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(250,246,238,0.45);
+    margin-top: 4px;
+  }
+
+  #output {
+    display: none;
+  }
+
+  .guest-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .guest-card {
+    background: var(--dark);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+
+  .guest-card:hover { border-color: var(--gold); }
+
+  .guest-card .qr-wrap {
+    background: white;
+    border-radius: 8px;
+    padding: 8px;
+    display: inline-block;
+    margin-bottom: 0.75rem;
+  }
+
+  .guest-card .guest-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    color: var(--gold-light);
+    margin-bottom: 2px;
+  }
+
+  .guest-card .guest-phone {
+    font-size: 11px;
+    color: rgba(250,246,238,0.4);
+    margin-bottom: 0.75rem;
+  }
+
+  .guest-card .token {
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    color: rgba(250,246,238,0.25);
+    word-break: break-all;
+    margin-bottom: 0.75rem;
+  }
+
+  .actions-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(201,168,76,0.15);
+    color: var(--gold);
+    border: 1px solid rgba(201,168,76,0.3);
+  }
+
+  .error-msg {
+    color: #E24B4A;
+    font-size: 13px;
+    padding: 0.5rem 0;
+    display: none;
+  }
+
+  #download-all {
+    display: none;
+  }
+
+  .top-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  @media (max-width: 500px) {
+    .guest-grid { grid-template-columns: 1fr 1fr; }
+    .stats { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="eyebrow">Birthday Bash 2025</p>
+  <h1>Invitation Generator</h1>
+  <p>Create unique QR-code invites for every guest</p>
+</div>
+
+<div class="card" id="setup-card">
+  <h2>Party Details</h2>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+    <div>
+      <label>Event Name</label>
+      <input type="text" id="event-name" placeholder="Sarah's 30th Birthday" value="Birthday Bash 2025">
+    </div>
+    <div>
+      <label>Event Date</label>
+      <input type="date" id="event-date">
+    </div>
+    <div>
+      <label>Venue</label>
+      <input type="text" id="event-venue" placeholder="The Grand Ballroom">
+    </div>
+    <div>
+      <label>Time</label>
+      <input type="time" id="event-time">
+    </div>
+  </div>
+
+  <div class="divider"><span>✦</span></div>
+
+  <label>Guest List (Name, Phone — one per line)</label>
+  <textarea id="guest-list" placeholder="Amina Okafor, +2348012345678&#10;Chidi Nwosu, +2347098765432&#10;Fatima Bello, +2349011223344"></textarea>
+  <p class="hint">Format: Full Name, Phone Number — one guest per line</p>
+
+  <p class="error-msg" id="err"></p>
+
+  <button class="btn" onclick="generate()">✦ Generate Invitations</button>
+</div>
+
+<div id="output">
+  <div class="top-actions">
+    <div class="stats" style="margin:0; flex:1;">
+      <div class="stat">
+        <div class="num" id="stat-total">0</div>
+        <div class="lbl">Guests</div>
+      </div>
+      <div class="stat">
+        <div class="num" id="stat-valid">0</div>
+        <div class="lbl">Valid Codes</div>
+      </div>
+    </div>
+    <button class="btn" id="download-all" onclick="downloadAll()">⬇ Download All</button>
+    <button class="btn btn-outline" onclick="exportJSON()">Export Token List</button>
+  </div>
+
+  <div class="card" style="max-width:700px; margin-left:auto; margin-right:auto; padding-bottom:2rem;">
+    <h2>Guest Invitations</h2>
+    <p style="font-size:13px; color:rgba(250,246,238,0.45); margin-bottom:1rem;">Each QR code is unique and tied to the guest's token. Download individual cards or all at once.</p>
+    <div class="guest-grid" id="guest-grid"></div>
+  </div>
+</div>
+
+<script>
+const SALT = "BDAY2025_" + Math.random().toString(36).slice(2, 8).toUpperCase();
+
+function hashToken(name, phone) {
+  const raw = SALT + "|" + name.trim().toUpperCase() + "|" + phone.replace(/\s/g, "");
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    hash = ((hash << 5) - hash) + raw.charCodeAt(i);
+    hash |= 0;
+  }
+  const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, "0");
+  return "INV-" + hex + "-" + name.trim().toUpperCase().replace(/\s+/g,"").slice(0,4);
+}
+
+let guestData = [];
+
+function generate() {
+  const raw = document.getElementById("guest-list").value.trim();
+  const err = document.getElementById("err");
+  err.style.display = "none";
+
+  if (!raw) { showErr("Please enter at least one guest."); return; }
+
+  const lines = raw.split("\n").filter(l => l.trim());
+  const guests = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const parts = lines[i].split(",");
+    if (parts.length < 2) { showErr(`Line ${i+1}: expected "Name, Phone". Got: "${lines[i]}"`); return; }
+    const name = parts[0].trim();
+    const phone = parts.slice(1).join(",").trim();
+    if (!name || !phone) { showErr(`Line ${i+1}: Name or phone is empty.`); return; }
+    guests.push({ name, phone, token: hashToken(name, phone) });
+  }
+
+  guestData = guests;
+  document.getElementById("stat-total").textContent = guests.length;
+  document.getElementById("stat-valid").textContent = guests.length;
+  document.getElementById("output").style.display = "block";
+  document.getElementById("download-all").style.display = "inline-flex";
+
+  const grid = document.getElementById("guest-grid");
+  grid.innerHTML = "";
+
+  const event = {
+    name: document.getElementById("event-name").value || "Birthday Bash",
+    date: document.getElementById("event-date").value,
+    venue: document.getElementById("event-venue").value,
+    time: document.getElementById("event-time").value
+  };
+
+  guests.forEach((g, idx) => {
+    const payload = JSON.stringify({
+      token: g.token,
+      name: g.name,
+      phone: g.phone,
+      event: event.name,
+      date: event.date,
+      venue: event.venue,
+      time: event.time
+    });
+
+    const div = document.createElement("div");
+    div.className = "guest-card";
+    div.id = "gc-" + idx;
+
+    const qwrap = document.createElement("div");
+    qwrap.className = "qr-wrap";
+    const qr = document.createElement("div");
+    qr.id = "qr-" + idx;
+    qwrap.appendChild(qr);
+
+    div.innerHTML = `
+      <div class="guest-name">${g.name}</div>
+      <div class="guest-phone">${g.phone}</div>
+      <div class="token">${g.token}</div>
+      <div class="actions-row">
+        <span class="badge">Ready</span>
+        <button class="btn btn-outline" onclick="downloadOne(${idx})">Download</button>
+      </div>
+    `;
+
+    div.insertBefore(qwrap, div.firstChild);
+    grid.appendChild(div);
+
+    new QRCode(qr, {
+      text: payload,
+      width: 120,
+      height: 120,
+      colorDark: "#000000",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  });
+
+  document.getElementById("output").scrollIntoView({ behavior: "smooth" });
+
+  // Store in localStorage for scanner
+  const tokenMap = {};
+  guests.forEach(g => { tokenMap[g.token] = { name: g.name, phone: g.phone, used: false }; });
+  localStorage.setItem("bday_tokens", JSON.stringify(tokenMap));
+  localStorage.setItem("bday_salt", SALT);
+  localStorage.setItem("bday_event", JSON.stringify(event));
+}
+
+function showErr(msg) {
+  const e = document.getElementById("err");
+  e.textContent = msg;
+  e.style.display = "block";
+}
+
+function downloadOne(idx) {
+  const g = guestData[idx];
+  setTimeout(() => {
+    const canvas = document.querySelector("#qr-" + idx + " canvas");
+    if (!canvas) { alert("QR not ready yet. Please wait a moment."); return; }
+    const full = document.createElement("canvas");
+    full.width = 240;
+    full.height = 300;
+    const ctx = full.getContext("2d");
+
+    // Background
+    ctx.fillStyle = "#1A1008";
+    ctx.fillRect(0, 0, 240, 300);
+
+    // Gold border
+    ctx.strokeStyle = "#C9A84C";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(8, 8, 224, 284);
+
+    // QR (white bg)
+    ctx.fillStyle = "#fff";
+    ctx.roundRect(50, 24, 140, 140, 8);
+    ctx.fill();
+    ctx.drawImage(canvas, 60, 34, 120, 120);
+
+    // Name
+    ctx.fillStyle = "#F0D080";
+    ctx.font = "bold 14px serif";
+    ctx.textAlign = "center";
+    ctx.fillText(g.name, 120, 190);
+
+    // Phone
+    ctx.fillStyle = "rgba(250,246,238,0.5)";
+    ctx.font = "11px sans-serif";
+    ctx.fillText(g.phone, 120, 210);
+
+    // Token
+    ctx.fillStyle = "rgba(250,246,238,0.25)";
+    ctx.font = "9px monospace";
+    ctx.fillText(g.token, 120, 240);
+
+    // Event label
+    const ev = JSON.parse(localStorage.getItem("bday_event") || "{}");
+    ctx.fillStyle = "#C9A84C";
+    ctx.font = "10px sans-serif";
+    ctx.fillText(ev.name || "Birthday Bash", 120, 270);
+    if (ev.date) ctx.fillText(ev.date, 120, 285);
+
+    const link = document.createElement("a");
+    link.download = `invite_${g.name.replace(/\s+/g,"_")}.png`;
+    link.href = full.toDataURL();
+    link.click();
+  }, 300);
+}
+
+function downloadAll() {
+  guestData.forEach((_, i) => {
+    setTimeout(() => downloadOne(i), i * 400);
+  });
+}
+
+function exportJSON() {
+  const tokenMap = JSON.parse(localStorage.getItem("bday_tokens") || "{}");
+  const blob = new Blob([JSON.stringify({ salt: SALT, tokens: tokenMap }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "bday_tokens.json";
+  a.click();
+}
+
+// Set today's date as default
+document.getElementById("event-date").value = new Date().toISOString().slice(0, 10);
+</script>
+</body>
+</html>
