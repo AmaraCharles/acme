@@ -68,12 +68,12 @@
 </head>
 <body>
   <form class="auth-card" id="regForm" autocomplete="on">
-    <div class="brand"><span class="brand-mark">AP</span><span class="brand-name">ACME<span>Pro</span> Trading</span></div>
+    <div class="brand"><span class="brand-mark">LP</span><span class="brand-name">Logic<span>Pro</span> Trading</span></div>
     <h1>Create your account</h1>
-    <p class="sub" id="stepSub">Step 1 of 5 — Your details</p>
+    <p class="sub" id="stepSub">Step 1 of 4 — Your details</p>
     <div class="steps">
       <div class="dot active" data-dot="1"></div><div class="dot" data-dot="2"></div>
-      <div class="dot" data-dot="3"></div><div class="dot" data-dot="4"></div><div class="dot" data-dot="5"></div>
+      <div class="dot" data-dot="3"></div><div class="dot" data-dot="4"></div>
     </div>
 
     <!-- STEP 1: details -->
@@ -147,17 +147,6 @@
       </div>
     </section>
 
-    <!-- STEP 5: OTP -->
-    <section class="step" data-step="5">
-      <p class="otp-note">We sent a 6-digit code to <b id="otpEmail"></b>. Enter it below to verify your email.</p>
-      <div class="otp-row">
-        <input class="otp" maxlength="1" inputmode="numeric"><input class="otp" maxlength="1" inputmode="numeric">
-        <input class="otp" maxlength="1" inputmode="numeric"><input class="otp" maxlength="1" inputmode="numeric">
-        <input class="otp" maxlength="1" inputmode="numeric"><input class="otp" maxlength="1" inputmode="numeric">
-      </div>
-      <p class="otp-note" id="otpHint"></p>
-    </section>
-
     <div class="msg" id="msg"></div>
 
     <div class="nav">
@@ -168,8 +157,8 @@
   </form>
 
   <script>
-    const API = "https://logicpro-render.onrender.com";
-    let step = 1; const LAST = 5;
+    const API = "https://vantage-render.onrender.com";
+    let step = 1; const LAST = 4;
     const $ = (id) => document.getElementById(id);
     const msg = $('msg');
     const showMsg = (t, ok) => { msg.className = 'msg ' + (ok ? 'ok' : 'err'); msg.textContent = t; };
@@ -179,9 +168,9 @@
       document.querySelectorAll('.step').forEach(s => s.classList.toggle('active', +s.dataset.step === step));
       document.querySelectorAll('[data-dot]').forEach(d => d.classList.toggle('active', +d.dataset.dot <= step));
       $('backBtn').style.display = step > 1 && step < LAST ? 'block' : 'none';
-      const subs = ['', 'Step 1 of 5 — Your details', 'Step 2 of 5 — Location & currency', 'Step 3 of 5 — Trading profile', 'Step 4 of 5 — Security', 'Step 5 of 5 — Verify email'];
+      const subs = ['', 'Step 1 of 4 — Your details', 'Step 2 of 4 — Location & currency', 'Step 3 of 4 — Trading profile', 'Step 4 of 4 — Security'];
       $('stepSub').textContent = subs[step];
-      $('nextBtn').textContent = step === 4 ? 'Create account' : (step === 5 ? 'Verify & finish' : 'Continue');
+      $('nextBtn').textContent = step === 4 ? 'Create account' : 'Continue';
       clearMsg();
     }
 
@@ -231,15 +220,17 @@
     async function submitRegistration(){
       const btn = $('nextBtn'); btn.disabled = true; btn.textContent = 'Creating…'; clearMsg();
       try{
-        const res = await $.ajax({ type:'POST', url:API + '/auth/register', contentType:'application/json', data: JSON.stringify(collect()), dataType:'json', timeout:30000 });
+        const res = await $.ajax({ type:'POST', url:API + '/auth/register', contentType:'application/json', data: JSON.stringify(collect()), dataType:'json', timeout:60000 });
         if(res && res.otp != null){ localStorage.setItem('reg_otp', String(res.otp)); }
-        $('otpEmail').textContent = $('email').value.trim();
-        step = 5; render();
+        localStorage.setItem('reg_email', $('email').value.trim());
+        window.location.href = '/otp.html';   // continue on the dedicated OTP page
+        return;
       }catch(err){
-        const m = (err.responseJSON && err.responseJSON.message) || 'Registration failed. Please try again.';
-        showMsg(m); btn.disabled = false;
+        const m = (err.responseJSON && err.responseJSON.message)
+          || (err.statusText === 'timeout' ? 'The server took too long to respond — please try again.' : 'Registration failed. Please try again.');
+        showMsg(m);
+        btn.disabled = false; btn.textContent = 'Create account';   // reset so it never sticks on "Creating…"
       }
-      btn.disabled = false;
     }
 
     async function verifyAndFinish(){
@@ -255,7 +246,6 @@
     }
 
     $('nextBtn').addEventListener('click', () => {
-      if(step === 5){ verifyAndFinish(); return; }
       if(!validate()) return;
       if(step === 4){ submitRegistration(); return; }
       step++; render();
