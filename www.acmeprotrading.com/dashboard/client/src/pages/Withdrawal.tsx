@@ -44,7 +44,7 @@ export default function Withdrawal() {
 
     try {
       const response = await fetch(
-        `https://vantage-render.onrender.com/transactions/${dataObj._id}/withdrawal`,
+        `https://logicpro-render.onrender.com/transactions/${dataObj._id}/withdrawal`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

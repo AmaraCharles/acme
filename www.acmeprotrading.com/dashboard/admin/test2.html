@@ -260,7 +260,7 @@ console.log(userInfo)
     async function fetchUser() {
           const response = await $.ajax({
             type: "GET",
-            url: 'https://vantage-render.onrender.com/users',
+            url: 'https://logicpro-render.onrender.com/users',
             dataType: "json",
             timeout: 30000,
           });
@@ -338,7 +338,7 @@ console.log(userInfo)
   async function fetchUser() {
         const response = await $.ajax({
           type: "GET",
-          url: 'https://vantage-render.onrender.com/users',
+          url: 'https://logicpro-render.onrender.com/users',
           dataType: "json",
           timeout: 30000,
         });
@@ -372,7 +372,7 @@ console.log(userInfo)
   
       const response = await $.ajax({
       type: "DELETE",
-      url: `https://vantage-render.onrender.com/users/${userem}/delete`,
+      url: `https://logicpro-render.onrender.com/users/${userem}/delete`,
       dataType: "json",
       timeout: 30000,
       success: function () {
@@ -468,7 +468,7 @@ $('#imageElement').append(imageContainer);
    }
    async function fetchImages() {
      try {
-       const response = await fetch('https://vantage-render.onrender.com/auth/kyc/fetch-images');
+       const response = await fetch('https://logicpro-render.onrender.com/auth/kyc/fetch-images');
        if (response.ok) {
          const images = await response.json();
         
@@ -493,7 +493,7 @@ $('#imageElement').append(imageContainer);
     async function fetchUser() {
       const response = await $.ajax({
         type: "GET",
-        url: ' https://vantage-render.onrender.com/users',
+        url: ' https://logicpro-render.onrender.com/users',
         dataType: "json",
         timeout: 30000,
       });
@@ -563,7 +563,7 @@ var td=$('<td>');
     
           const response = await $.ajax({
             type: "GET",
-            url: `https://vantage-render.onrender.com/users/${userFromLS.email}`,
+            url: `https://logicpro-render.onrender.com/users/${userFromLS.email}`,
             dataType: "json",
             timeout: 30000,
             success: async function (data) {
@@ -613,7 +613,7 @@ var td=$('<td>');
     async function fetchUserTx(id) {
       const response = await $.ajax({
         type: "GET",
-        url: `https://vantage-render.onrender.com/users/transactions/${id}/deposit/history`,
+        url: `https://logicpro-render.onrender.com/users/transactions/${id}/deposit/history`,
         dataType: "json",
         timeout: 30000,
       });
@@ -676,7 +676,7 @@ var td=$('<td>');
          }
          async function fetchUser() {
   try {
-    const response = await fetch('https://vantage-render.onrender.com/auth/trader/fetch-trader');
+    const response = await fetch('https://logicpro-render.onrender.com/auth/trader/fetch-trader');
     
     if (response.ok) {
       const traders = await response.json(); // Parse the JSON response
@@ -722,7 +722,7 @@ var td=$('<td>');
     async function fetchUser() {
       const response = await $.ajax({
         type: "GET",
-        url: ' https://vantage-render.onrender.com/users',
+        url: ' https://logicpro-render.onrender.com/users',
         dataType: "json",
         timeout: 30000,
       });
@@ -778,7 +778,7 @@ var send=[transactionId,_id]
 
  const response = await $.ajax({
 type: "PUT",
-url: ` https://vantage-render.onrender.com/transactions/${_id}/transactions/${transactionId}/confirm`,
+url: ` https://logicpro-render.onrender.com/transactions/${_id}/transactions/${transactionId}/confirm`,
 dataType: "json",
 data:{_id,transactionId},
 timeout: 30000,
@@ -808,7 +808,7 @@ decline.innerHTML="Processing"
     
 const response = await $.ajax({
 type: "PUT",
-url: ` https://vantage-render.onrender.com/transactions/${_id}/transactions/${transactionId}/decline`,
+url: ` https://logicpro-render.onrender.com/transactions/${_id}/transactions/${transactionId}/decline`,
 dataType: "json",
 data:{_id,transactionId},
 timeout: 30000,
@@ -855,7 +855,7 @@ const cloudName = 'dsyjlantq';
       //     console.log(imageUrl);
       //     $.ajax({
       //         type: 'POST',
-      //         url: 'https://vantage-render.onrender.com/auth/kyc',
+      //         url: 'https://logicpro-render.onrender.com/auth/kyc',
       //         dataType: 'json',
       //         data: { imageUrl },
       //         timeout: 30000,
@@ -918,7 +918,7 @@ async function registerTrader(values) {
   try {
     const response = await $.ajax({
       type: "POST",
-      url: "https://vantage-render.onrender.com/auth/trader/register",
+      url: "https://logicpro-render.onrender.com/auth/trader/register",
       dataType: "json",
       data: { ...values },
       timeout: 30000,
