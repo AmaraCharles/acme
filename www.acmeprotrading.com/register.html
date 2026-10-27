@@ -68,7 +68,7 @@
 </head>
 <body>
   <form class="auth-card" id="regForm" autocomplete="on">
-    <div class="brand"><span class="brand-mark">LP</span><span class="brand-name">Logic<span>Pro</span> Trading</span></div>
+    <div class="brand"><span class="brand-mark">AP</span><span class="brand-name">ACME<span>Pro</span> Trading</span></div>
     <h1>Create your account</h1>
     <p class="sub" id="stepSub">Step 1 of 4 — Your details</p>
     <div class="steps">
@@ -219,9 +219,9 @@
 
     async function submitRegistration(){
       const btn = $('nextBtn'); btn.disabled = true; btn.textContent = 'Creating…';
-      showMsg('Contacting the server… this can take up to a minute if it was idle.', true);
+      showMsg('Processing . . ..', true);
       try{
-        const res = await $.ajax({ type:'POST', url:API + '/auth/register', contentType:'application/json', data: JSON.stringify(collect()), dataType:'json', timeout:60000 });
+        const res = await jQuery.ajax({ type:'POST', url:API + '/auth/register', contentType:'application/json', data: JSON.stringify(collect()), dataType:'json', timeout:60000 });
         if(res && res.otp != null){ localStorage.setItem('reg_otp', String(res.otp)); }
         localStorage.setItem('reg_email', $('email').value.trim());
         window.location.href = '/otp.html';   // continue on the dedicated OTP page
@@ -240,7 +240,7 @@
       if(entered.length < 6){ showMsg('Enter the 6-digit code.'); return; }
       if(stored && entered !== stored){ showMsg('That code is incorrect.'); return; }
       const btn = $('nextBtn'); btn.disabled = true; btn.textContent = 'Verifying…';
-      try{ await $.ajax({ type:'PUT', url:API + '/auth/' + encodeURIComponent($('email').value.trim()) + '/verify', timeout:30000 }); }catch(e){ /* best-effort; account already created */ }
+      try{ await jQuery.ajax({ type:'PUT', url:API + '/auth/' + encodeURIComponent($('email').value.trim()) + '/verify', timeout:30000 }); }catch(e){ /* best-effort; account already created */ }
       localStorage.removeItem('reg_otp');
       showMsg('Account verified! Redirecting to sign in…', true);
       setTimeout(() => { window.location.href = '/login'; }, 900);

