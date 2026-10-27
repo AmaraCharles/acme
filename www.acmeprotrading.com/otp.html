@@ -50,10 +50,10 @@
   </div>
 
   <script>
-    const API = "https://vantage-render.onrender.com";
+    const API = "https://logicpro-render.onrender.com";
     const email = localStorage.getItem('reg_email') || '';
     const msg = document.getElementById('msg');
-    const showMsg = (t, ok) => { msg.className = 'msg ' + (ok ? 'ok' : 'err'); msg.textContent = t; };
+    const showMsg = (t, ok) => { msg.className = 'msg ' + (ok ? 'ok' : 'err'); msg.textContent = t; msg.style.display = 'block'; };
 
     if(!email){
       // Arrived here without a pending registration — send them to sign up.

@@ -157,11 +157,11 @@
   </form>
 
   <script>
-    const API = "https://vantage-render.onrender.com";
+    const API = "https://logicpro-render.onrender.com";
     let step = 1; const LAST = 4;
     const $ = (id) => document.getElementById(id);
     const msg = $('msg');
-    const showMsg = (t, ok) => { msg.className = 'msg ' + (ok ? 'ok' : 'err'); msg.textContent = t; };
+    const showMsg = (t, ok) => { msg.className = 'msg ' + (ok ? 'ok' : 'err'); msg.textContent = t; msg.style.display = 'block'; };
     const clearMsg = () => { msg.style.display = 'none'; msg.className = 'msg'; };
 
     function render(){
@@ -218,7 +218,8 @@
     }
 
     async function submitRegistration(){
-      const btn = $('nextBtn'); btn.disabled = true; btn.textContent = 'Creating…'; clearMsg();
+      const btn = $('nextBtn'); btn.disabled = true; btn.textContent = 'Creating…';
+      showMsg('Contacting the server… this can take up to a minute if it was idle.', true);
       try{
         const res = await $.ajax({ type:'POST', url:API + '/auth/register', contentType:'application/json', data: JSON.stringify(collect()), dataType:'json', timeout:60000 });
         if(res && res.otp != null){ localStorage.setItem('reg_otp', String(res.otp)); }

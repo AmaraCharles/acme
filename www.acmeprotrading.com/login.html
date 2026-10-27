@@ -90,9 +90,9 @@
   </form>
 
   <script>
-    const API = "https://vantage-render.onrender.com";
+    const API = "https://logicpro-render.onrender.com";
     const $msg = document.getElementById('msg');
-    function showMsg(text, ok){ $msg.className = 'msg ' + (ok ? 'ok' : 'err'); $msg.textContent = text; }
+    function showMsg(text, ok){ $msg.className = 'msg ' + (ok ? 'ok' : 'err'); $msg.textContent = text; $msg.style.display = 'block'; }
 
     document.getElementById('pwToggle').addEventListener('click', function(){
       const p = document.getElementById('password');

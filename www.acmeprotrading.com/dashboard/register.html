@@ -190,7 +190,10 @@
       if(step === 1){
         if(!req('firstName','first name') || !req('lastName','last name')) return false;
         const email = $('email').value.trim();
-        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showMsg('Please enter a valid email address.'); return false; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showMsg('Please enter a valid email address.');
+    return false;
+}
         if(!req('phone','phone number')) return false;
       } else if(step === 2){
         if(!req('country','country') || !req('currency','currency')) return false;
