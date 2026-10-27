@@ -13,30 +13,11 @@ function apiLog(action, data) {
 function initUserData() {
   const existingUser = localStorage.getItem('userData');
   if (!existingUser) {
-    // Login redirect disabled for the prototype: seed a default demo user so the
-    // dashboard loads without signing in. Re-enable the redirect for production.
-    const demoUser = {
-      _id: 'demo',
-      firstName: 'New',
-      lastName: 'Port',
-      email: 'demo@example.com',
-      country: 'Andorra',
-      kyc: 'unverified',
-      verified: false,
-      balance: 0,
-      profit: 0,
-      referalBonus: '0',
-      referralCode: 'DEMO01',
-      referredUsers: [],
-      transactions: [],
-      withdrawals: [],
-      copyTradingActive: [],
-      plan: [],
-      rewards: [],
-      dateJoined: new Date().toISOString()
-    };
-    localStorage.setItem('userData', JSON.stringify(demoUser));
-    return demoUser;
+    // Login gate: no session → send the visitor to the login page.
+    // (login.html lives at the deploy root; /login.html works with or without
+    // Vercel cleanUrls, which also serves it at /login.)
+    window.location.href = '/login.html';
+    return null;
   }
   return JSON.parse(existingUser);
 }
