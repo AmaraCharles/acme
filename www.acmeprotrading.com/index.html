@@ -137,6 +137,7 @@
         }
     </style>
 <link href="../cdn.jsdelivr.net/npm/aos%402.3.4/dist/aos.css" rel="stylesheet">
+<link href="assets/css/landing-effects.css" rel="stylesheet">
 </head>
 
 <body data-theme="dark">
@@ -1749,10 +1750,15 @@
             elements.forEach(el => observer.observe(el));
         });
     </script>
+    <script src="js/landing-effects.js"></script>
     <script src="../cdn.jsdelivr.net/npm/aos%402.3.4/dist/aos.js"></script>
     <script>
         AOS.init({
-            duration: 1200,
+            duration: 900,
+            easing: 'ease-out-cubic',
+            offset: 80,
+            once: true,
+            disable: function () { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
         })
     </script>
 

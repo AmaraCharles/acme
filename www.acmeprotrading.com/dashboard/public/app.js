@@ -1087,41 +1087,34 @@ async function fxRenderTrending() {
   }).join('');
 }
 
-// ---- P&L data: real trade results when available, else deterministic mock ----
+// ---- P&L data: built only from the user's real completed trades ----
 const FX_PNL_MONTHS = 12;
 
-// Built from the user's own closed trades (user.planHistory entries carry
-// `profit` + `date`). Returns { 'YYYY-M-D': totalProfit } or null if the user
-// has no trade history yet (then the calendar falls back to the mock).
-let fxPnlRealMap; // undefined = not computed; null = no real data; object = real
+// Built from the user's closed trades in user.planHistory. A trade counts as
+// won (+profit) when profit > 0, otherwise lost (-tradeAmount) — same rule as
+// the trade history table. Returns { 'YYYY-M-D': netPnL }; empty if no trades.
+let fxPnlRealMap = {};
 function fxComputeRealPnl() {
   const u = fxCurrentUser();
   const trades = u && Array.isArray(u.planHistory) ? u.planHistory : [];
   const map = {};
-  let count = 0;
   trades.forEach(t => {
-    if (!t || t.date == null || t.profit == null) return;
-    const p = Number(t.profit);
-    const d = new Date(t.date);
-    if (Number.isNaN(p) || isNaN(d.getTime())) return;
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (!t || String(t.status || '').toUpperCase() !== 'COMPLETED') return;
+    const d = new Date(t.date || t.endTime || t.startTime || t.createdAt);
+    if (isNaN(d.getTime())) return;
+    const profit = Number(t.profit) || 0;
+    const p = profit > 0 ? profit : -(Number(t.tradeAmount) || 0);
+    const key = fxPnlKey(d);
     map[key] = (map[key] || 0) + p;
-    count++;
   });
-  return count ? map : null;
+  return map;
 }
 // Recomputed at the start of each calendar render so fresh user data shows up.
 function fxResetPnl() { fxPnlRealMap = fxComputeRealPnl(); }
 function fxPnlKey(date) { return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`; }
 
 function fxDailyPnL(date) {
-  if (fxPnlRealMap) return fxPnlRealMap[fxPnlKey(date)] || 0;
-  // Mock fallback (demo / accounts with no trades yet).
-  let seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
-  const rnd = () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-  const profitable = rnd() < 0.62;
-  const size = 20 + rnd() * 480;
-  return Math.round((profitable ? size : -size * 0.7) * 100) / 100;
+  return fxPnlRealMap[fxPnlKey(date)] || 0;
 }
 
 function fxFormatPnL(value, compact) {
@@ -1135,10 +1128,8 @@ function fxHasHistory(date) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const earliest = new Date(today.getFullYear(), today.getMonth() - (FX_PNL_MONTHS - 1), 1);
   if (date < earliest || date > today) return false;
-  // With real data, only days that actually have trades are marked; the mock
-  // treats every past day in the window as having a result.
-  if (fxPnlRealMap) return Object.prototype.hasOwnProperty.call(fxPnlRealMap, fxPnlKey(date));
-  return true;
+  // Only days that actually have completed trades are marked.
+  return Object.prototype.hasOwnProperty.call(fxPnlRealMap, fxPnlKey(date));
 }
 
 function fxClampMonth(date) {
@@ -2972,7 +2963,7 @@ function renderFundAccountPage() {
 </div>
 
 <div style="text-align: center; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid hsl(var(--border));">
-  <p class="text-muted small">COPYRIGHT ©2025 Demoweb3s, All rights Reserved</p>
+  <p class="text-muted small">COPYRIGHT ©2025 Acme Protrading, All rights Reserved</p>
 </div>
 
 
@@ -4018,7 +4009,7 @@ function renderReferralsPage() {
   const html = `
     <div style="margin-bottom: 1.5rem;">
       <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Referral Program</h1>
-      <p class="text-muted">Earn rewards by inviting friends to Demoweb3s</p>
+      <p class="text-muted">Earn rewards by inviting friends to Acme Protrading</p>
     </div>
     
     <div class="stats-grid">
@@ -4040,7 +4031,7 @@ function renderReferralsPage() {
       <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">Your Referral Code</h2>
       <p class="text-muted" style="margin-bottom: 1rem;">Share this code with your friends. They get a bonus and you earn 10% of their first deposit!</p>
       <div class="referral-code">
-        <input type="text" id="referralCodeInput" class="input" value="https://www.Demoweb3s.com/register.html?ref=${user.referralCode}" readonly>
+        <input type="text" id="referralCodeInput" class="input" value="https://www.Acme Protrading.com/register.html?ref=${user.referralCode}" readonly>
         <button class="copy-btn" onclick="copyReferralCode()">
           <svg style="width: 1rem; height: 1rem; display: inline; vertical-align: middle; margin-right: 0.25rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>

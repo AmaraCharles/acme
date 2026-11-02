@@ -1,0 +1,209 @@
+/* ============================================================
+   Landing page effects: dot pattern, scroll effects, focus/hover.
+   Loaded after the theme CSS; everything is additive.
+   ============================================================ */
+
+:root {
+  --fx-accent: #29a8f0;
+  --fx-dot: rgba(0, 0, 0, .85);
+}
+
+/* ---------- Dot pattern in the white space ----------
+   Same look as the grid on the right edge (grid-right2.webp):
+   square-ish black dots on a ~52px grid, fading out toward the content.
+   Drawn in CSS so it needs no image. Dark sections paint over it, so it
+   only shows through on the white parts of the page. */
+.page-main {
+  position: relative;
+  isolation: isolate;
+}
+
+.page-main::before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  z-index: -1;
+  background-image: radial-gradient(circle, var(--fx-dot) 2px, transparent 2.5px);
+  background-size: 52px 52px;
+}
+
+/* Left edge: mirror of the right-edge grid, repeating down the page */
+.page-main::before {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 420px;
+  -webkit-mask-image:
+    linear-gradient(to right, #000 0%, rgba(0, 0, 0, .6) 45%, transparent 100%),
+    repeating-linear-gradient(to bottom, transparent 0, #000 260px, #000 640px, transparent 900px);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, #000 0%, rgba(0, 0, 0, .6) 45%, transparent 100%),
+    repeating-linear-gradient(to bottom, transparent 0, #000 260px, #000 640px, transparent 900px);
+  mask-composite: intersect;
+}
+
+@media (max-width: 1099px) {
+  .page-main::before { width: 220px; opacity: .6; }
+}
+
+@media (max-width: 767px) {
+  .page-main::before { display: none; }
+}
+
+/* ---------- Scroll progress bar ---------- */
+.fx-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 2000;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--fx-accent), #6fd3ff);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+
+/* ---------- Header reacts to scrolling ---------- */
+.page__header {
+  transition: box-shadow .3s ease, background-color .3s ease;
+}
+
+.page__header.fx-scrolled {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+  background-color: rgba(11, 17, 24, .96);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* ---------- Back to top ---------- */
+.fx-to-top {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 1500;
+  width: 46px;
+  height: 46px;
+  border: none;
+  border-radius: 50%;
+  background: var(--fx-accent);
+  color: #fff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 18px rgba(41, 168, 240, .4);
+  opacity: 0;
+  transform: translateY(16px);
+  pointer-events: none;
+  transition: opacity .3s ease, transform .3s ease, box-shadow .2s ease;
+}
+
+.fx-to-top.fx-show {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.fx-to-top:hover { box-shadow: 0 8px 26px rgba(41, 168, 240, .6); }
+.fx-to-top svg { width: 20px; height: 20px; }
+
+/* ---------- Focus & hover effects ---------- */
+
+/* Clear keyboard focus ring on every interactive element */
+.page a:focus-visible,
+.page button:focus-visible,
+.page input:focus-visible,
+.page select:focus-visible,
+.page textarea:focus-visible,
+.page [tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid var(--fx-accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 6px rgba(41, 168, 240, .2);
+}
+
+/* Header nav: animated underline on hover / focus */
+.com-header-nav-links-item__main {
+  position: relative;
+}
+
+.com-header-nav-links-item__main::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--fx-accent);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform .25s ease;
+}
+
+.com-header-nav-links-item:hover .com-header-nav-links-item__main::after,
+.com-header-nav-links-item__main:focus-within::after {
+  transform: scaleX(1);
+}
+
+/* Buttons: lift + glow */
+.com-c-button {
+  transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+}
+
+.com-c-button:hover,
+.com-c-button:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(41, 168, 240, .35);
+  filter: brightness(1.05);
+}
+
+.com-c-button:active { transform: translateY(0); }
+
+/* Cards: lift, accent ring, slight zoom */
+.p-home-m-seoblog__link-card,
+.p-home-m-seo-numbers-item,
+.p-home-m-seo-for-everyone li {
+  transition: transform .3s cubic-bezier(.2, .7, .3, 1), box-shadow .3s ease;
+  will-change: transform;
+}
+
+.p-home-m-seoblog__link-card:hover,
+.p-home-m-seoblog__link-card:focus-visible,
+.p-home-m-seo-numbers-item:hover,
+.p-home-m-seo-for-everyone li:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .25), 0 0 0 2px rgba(41, 168, 240, .55);
+}
+
+/* Spotlight: dim sibling cards while one is hovered/focused */
+@media (hover: hover) {
+  .p-home-m-seoblog__list:hover .p-home-m-seoblog__link-card:not(:hover),
+  .p-home-m-seoblog__list:focus-within .p-home-m-seoblog__link-card:not(:focus-visible):not(:hover) {
+    opacity: .6;
+  }
+
+  .p-home-m-seoblog__link-card { transition: transform .3s cubic-bezier(.2, .7, .3, 1), box-shadow .3s ease, opacity .3s ease; }
+}
+
+/* Images inside sections ease-zoom on hover */
+.p-home__section img {
+  transition: transform .6s cubic-bezier(.2, .7, .3, 1);
+}
+
+.p-home__section img:hover { transform: scale(1.03); }
+
+/* Respect users who turn motion off */
+@media (prefers-reduced-motion: reduce) {
+  .fx-progress { display: none; }
+  .page *,
+  .page *::before,
+  .page *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+  }
+  .p-home__section img:hover,
+  .com-c-button:hover,
+  .p-home-m-seoblog__link-card:hover { transform: none; }
+}
