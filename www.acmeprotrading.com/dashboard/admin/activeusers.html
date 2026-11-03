@@ -9510,7 +9510,7 @@
   async function fetchUser() {
         const response = await $.ajax({
           type: "GET",
-          url: 'https://logicpro-render.onrender.com/users',
+          url: 'https://acme-heroku-5e8a2a354826.herokuapp.com/users',
           dataType: "json",
           timeout: 30000,
         });
@@ -9544,7 +9544,7 @@
   
       const response = await $.ajax({
       type: "DELETE",
-      url: `https://logicpro-render.onrender.com/users/${userem}/delete`,
+      url: `https://acme-heroku-5e8a2a354826.herokuapp.com/users/${userem}/delete`,
       dataType: "json",
       timeout: 30000,
       success: function () {

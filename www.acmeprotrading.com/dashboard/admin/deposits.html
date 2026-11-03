@@ -9486,7 +9486,7 @@
     async function fetchUserTx(id) {
       const response = await $.ajax({
         type: "GET",
-        url: `https://logicpro-render.onrender.com/users/transactions/${id}/deposit/history`,
+        url: `https://acme-heroku-5e8a2a354826.herokuapp.com/users/transactions/${id}/deposit/history`,
         dataType: "json",
         timeout: 30000,
       });
